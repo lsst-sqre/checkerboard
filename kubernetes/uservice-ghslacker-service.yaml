@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: u-ghslacker
+  labels:
+    name: u-ghslacker
+spec:
+  type: NodePort
+  ports:
+  - name: http
+    port: 5000 # FIXME: must not conflict with any other services
+    targetPort: 5000
+    protocol: TCP
+  selector:
+    name: u-ghslacker

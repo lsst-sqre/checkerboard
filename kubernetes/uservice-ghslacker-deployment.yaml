@@ -1,0 +1,21 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: u-ghslacker
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: u-ghslacker
+    spec:
+      containers:
+
+        - name: u-ghslacker
+          imagePullPolicy: "Always"
+          image: "lsstsqre/uservice-ghslacker"
+          ports:
+            -
+              containerPort: 5000
+              name: u-ghslacker
+              

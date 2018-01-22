@@ -1,0 +1,20 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: api-lsst-codes
+spec:
+  tls:
+  - secretName: ssl-proxy-secret
+  backend:
+    serviceName: default-handler
+    servicePort: 80
+  rules:
+  - host: api.lsst.codes
+    http:
+      paths:
+      # One backend/path pair per service
+      - path: /ghslacker/* # One path per service, and the service needs
+        backend:           #  to recognize the path (no rewriting).
+          serviceName: u-ghslacker
+          servicePort: 5000 # FIXME; one port per service, nonconflicting.
+          
