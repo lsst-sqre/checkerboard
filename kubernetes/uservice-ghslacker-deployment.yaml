@@ -20,7 +20,7 @@ spec:
               name: u-ghslacker
           env:
             - name: LOGLEVEL
-              value: DEBUG
+              value: INFO
             - name: GHSLACKER_USER
               valueFrom:
                 secretKeyRef:
