@@ -66,7 +66,7 @@ def server(run_standalone=False):
     # @app.route("/ghslacker/<parameter>")
     # or, if you have a parameter, def route_function(parameter=None):
     def get_usermap():
-        """Slack <-> GitHub user mapper
+        """Slack <-> GitHub user mapper.  Returns entire user map as JSON.
         """
         # FIXME: service logic goes here
         # See https://sqr-015.lsst.io for details.
@@ -81,6 +81,8 @@ def server(run_standalone=False):
     @app.route("/ghslacker/slack/<slack_user>")
     @app.route("/ghslacker/slack/<slack_user>/")
     def get_github_user(slack_user=None):
+        """Returns JSON object mapping Slack user to GitHub user, given
+        Slack user."""
         _precheck()
         if slack_user:
             gh_user = app.config["MAPPER"].github_for_slack_user(slack_user)
@@ -97,6 +99,8 @@ def server(run_standalone=False):
     @app.route("/ghslacker/github/<github_user>")
     @app.route("/ghslacker/github/<github_user>/")
     def get_slack_user(github_user=None):
+        """Returns JSON object mapping Slack user to GitHub user, given
+        GitHub user."""
         _precheck()
         if github_user:
             sl_user = app.config["MAPPER"].slack_for_github_user(github_user)
@@ -130,12 +134,16 @@ def server(run_standalone=False):
                             app_token=os.environ["SLACK_APP_TOKEN"],
                             field_name=FIELD)
         if not mapper:
-            raise BackendError(reason="Failed to get mapper object.",
+            raise BackendError(reason="Internal Server Error",
                                content="Failed to get mapper object.",
                                status_code=500)
         app.config["MAPPER"] = mapper
-        SCHED.enter(CACHE_LIFETIME, 1, mapper.rebuild_usermap, ())
+        SCHED.enter(CACHE_LIFETIME, 1, _refresh_mapper, ())
         Thread(target=SCHED.run, name='mapbuilder').start()
+
+    def _refresh_mapper(mapper):
+        mapper.rebuild_userlist()
+        mapper.rebuild_usermap()
 
     if run_standalone:
         app.run(host='0.0.0.0', threaded=True)
