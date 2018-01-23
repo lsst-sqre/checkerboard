@@ -18,4 +18,27 @@ spec:
             -
               containerPort: 5000
               name: u-ghslacker
-              
+          env:
+            - name: LOGLEVEL
+              value: DEBUG
+            - name: GHSLACKER_USER
+              valueFrom:
+                secretKeyRef:
+                  name: u-ghslacker
+                  key: ghslacker.user
+            - name: GHSLACKER_PW
+              valueFrom:
+                secretKeyRef:
+                  name: u-ghslacker
+                  key: ghslacker.pw
+            - name: SLACK_APP_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: u-ghslacker
+                  key: slack.app.token
+            - name: SLACK_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: u-ghslacker
+                  key: slack.bot.token
+                  

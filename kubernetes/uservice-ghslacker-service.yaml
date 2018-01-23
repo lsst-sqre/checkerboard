@@ -8,7 +8,7 @@ spec:
   type: NodePort
   ports:
   - name: http
-    port: 5000 # FIXME: must not conflict with any other services
+    port: 5006 # FIXME: must not conflict with any other services
     targetPort: 5000
     protocol: TCP
   selector:
