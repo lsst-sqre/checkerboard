@@ -27,9 +27,7 @@ class Usermapper(object):
         self.mutex = Lock()
         self.session = FuturesSession(max_workers=max_workers)
         self.field_id = self._get_field_id(field_name)
-        self.mutex.acquire()
-        self.userlist = self.rebuild_userlist()
-        self.mutex.release()
+        self.rebuild_userlist()
         self.session.max_workers = min(max_workers, len(self.userlist))
         logging.debug("Building usermap.")
         Thread(target=self.rebuild_usermap, name='mapbuilder').start()
@@ -95,10 +93,14 @@ class Usermapper(object):
                 params["cursor"] = retval["response_metadata"]["next_cursor"]
             else:
                 moar = False
-        return [{"name": u["name"],
-                 "id": u["id"]} for u in userlist]
+        self.mutex.acquire()
+        self.userlist = [{"name": u["name"],
+                          "id": u["id"]} for u in userlist]
+        self.mutex.release()
 
     def check_initialization(self):
+        """Returns True if the usermap has been built, False otherwise.
+        """
         try:
             self._check_initialization()
             return True
@@ -106,6 +108,8 @@ class Usermapper(object):
             return False
 
     def wait_for_initialization(self, delay=1):
+        """Polls, with specified delay, until the usermap has been built.
+        """
         while True:
             if self.check_initialization():
                 return
