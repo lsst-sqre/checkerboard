@@ -142,7 +142,6 @@ def server(run_standalone=False):
         Thread(target=SCHED.run, name='mapbuilder').start()
 
     def _refresh_mapper(mapper):
-        mapper.rebuild_userlist()
         mapper.rebuild_usermap()
 
     if run_standalone:
