@@ -17,16 +17,17 @@ Username", hence the service name.
 * `/`: returns `OK` (used by Google Container Engine Ingress healthcheck)
 
 * `/ghslacker`: returns a JSON object containing all known maps.  The
-  Slack user is the key, and the GitHub user (or, more generally, the
-  contents of the field specified in the service) is the value.
+  Slack user ID is the key, and the GitHub username (or, more generally,
+  the contents of the field specified in the service) is the value.
 
 * `/ghslacker/slack/<user>`: returns a JSON object whose key is `<user>`
-  and whose value is the corresponding GitHub user.  Returns a 404 if
-  either the user is not found, or there is no corresponding GitHub user.
+  (which is a Slack `id` (*not* `name`), and whose value is the
+  corresponding GitHub user.  Returns a 404 if either the user ID is not
+  found, or there is no corresponding GitHub user.
   
 * `/ghslacker/github/<user>`: returns a JSON object whose value is
-  `<user>` and whose key is the corresponding Slack user.  Returns a 404
-  if there is no GitHub username <user> mapped to a Slack user.
+  `<user>` and whose key is the corresponding Slack user `id`.  Returns
+  a 404 if there is no GitHub username <user> mapped to a Slack user.
 
 ### Returned Structure
 

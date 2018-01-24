@@ -12,7 +12,7 @@ class Usermapper(object):
     """
 
     usermap = {}
-    userlist = []
+    _userlist = []
     session = None
     usermap_initialized = False
     bot_token = None
@@ -27,8 +27,7 @@ class Usermapper(object):
         self.mutex = Lock()
         self.session = FuturesSession(max_workers=max_workers)
         self.field_id = self._get_field_id(field_name)
-        self.rebuild_userlist()
-        self.session.max_workers = min(max_workers, len(self.userlist))
+        self.session.max_workers = min(max_workers, len(self._userlist))
         logging.debug("Building usermap.")
         Thread(target=self.rebuild_usermap, name='mapbuilder').start()
 
@@ -55,8 +54,9 @@ class Usermapper(object):
         logging.debug("Beginning usermap rebuild.")
         newmap = {}
         futures = {}
-        for user in self.userlist:
-            futures[user["name"]] = self._retrieve_github_user_future(user)
+        self._rebuild_userlist()
+        for user in self._userlist:
+            futures[user] = self._retrieve_github_user_future(user)
         for user in futures:
             resp = self._slackcheck(futures[user])
             if "profile" in resp:
@@ -73,8 +73,26 @@ class Usermapper(object):
         self.mutex.release()
         logging.debug("Usermap built.")
 
-    def rebuild_userlist(self):
-        """Get all users of this Slack instance, with name and id.
+    def check_initialization(self):
+        """Returns True if the usermap has been built, False otherwise.
+        """
+        try:
+            self._check_initialization()
+            return True
+        except RuntimeError:
+            return False
+
+    def wait_for_initialization(self, delay=1):
+        """Polls, with specified delay, until the usermap has been built.
+        """
+        while True:
+            if self.check_initialization():
+                return
+            logging.debug("Usermap not initialized; sleeping %d s." % delay)
+            time.sleep(delay)
+
+    def _rebuild_userlist(self):
+        """Get all users of this Slack instance by id.
         """
         params = {
             "Content-Type": "application/x-www-form/urlencoded",
@@ -94,27 +112,8 @@ class Usermapper(object):
             else:
                 moar = False
         self.mutex.acquire()
-        self.userlist = [{"name": u["name"],
-                          "id": u["id"]} for u in userlist]
+        self._userlist = [u["id"] for u in userlist]
         self.mutex.release()
-
-    def check_initialization(self):
-        """Returns True if the usermap has been built, False otherwise.
-        """
-        try:
-            self._check_initialization()
-            return True
-        except RuntimeError:
-            return False
-
-    def wait_for_initialization(self, delay=1):
-        """Polls, with specified delay, until the usermap has been built.
-        """
-        while True:
-            if self.check_initialization():
-                return
-            logging.debug("Usermap not initialized; sleeping %d s." % delay)
-            time.sleep(delay)
 
     def _get_field_id(self, field_name):
         method = "team.profile.get"
@@ -142,7 +141,7 @@ class Usermapper(object):
         params = {
             "Content-Type": "application/x-www-form/urlencoded",
             "token": self.app_token,
-            "user": user["id"]
+            "user": user
         }
         return self._get_slack_future(method, params)
 
