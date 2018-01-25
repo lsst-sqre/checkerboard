@@ -33,17 +33,20 @@ class Usermapper(object):
 
     def github_for_slack_user(self, user):
         """Return the usermap entry for a given Slack user (which should be
-        the GitHub Username field).  None if there is no match.
+        the GitHub Username field).  None if there is no match.  Case-
+        sensitive on the Slack side, forced to lower on the GitHub side.
         """
         self._check_initialization()
-        return self.usermap.get(user)
+        u = self.usermap.get(user)
+        if u:
+            return u.lower()
 
     def slack_for_github_user(self, user):
         """Given a GitHub Username, return the first Slack username that has
-        that name in the GitHub Username field, or None.
+        that name in the GitHub Username field, or None.  Not case-sensitive.
         """
         for slacker in self.usermap:
-            if self.usermap[slacker] == user:
+            if self.usermap[slacker].lower() == user.lower():
                 return slacker
         self._check_initialization()
         return None
