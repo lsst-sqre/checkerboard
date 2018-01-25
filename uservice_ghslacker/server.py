@@ -138,11 +138,8 @@ def server(run_standalone=False):
                                content="Failed to get mapper object.",
                                status_code=500)
         app.config["MAPPER"] = mapper
-        SCHED.enter(CACHE_LIFETIME, 1, _refresh_mapper, ())
+        SCHED.enter(CACHE_LIFETIME, 1, mapper.rebuild_usermap, ())
         Thread(target=SCHED.run, name='mapbuilder').start()
-
-    def _refresh_mapper(mapper):
-        mapper.rebuild_usermap()
 
     if run_standalone:
         app.run(host='0.0.0.0', threaded=True)
