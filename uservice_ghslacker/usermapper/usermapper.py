@@ -114,6 +114,8 @@ class Usermapper(object):
                 params["cursor"] = retval["response_metadata"]["next_cursor"]
             else:
                 moar = False
+            if moar:
+                time.sleep(1)  # To make Slack happy about rate-limiting.
         self.mutex.acquire()
         self._userlist = [u["id"] for u in userlist]
         self.mutex.release()
