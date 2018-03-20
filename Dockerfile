@@ -13,7 +13,7 @@ RUN        useradd -d /home/uwsgi -m uwsgi
 RUN        mkdir /dist
 
 # Must run python setup.py sdist first.
-ARG        VERSION="0.0.5"
+ARG        VERSION="0.0.6"
 LABEL      version="$VERSION"
 COPY       dist/sqre-uservice-ghslacker-$VERSION.tar.gz /dist
 RUN        pip install /dist/sqre-uservice-ghslacker-$VERSION.tar.gz

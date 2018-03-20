@@ -56,12 +56,12 @@ class Usermapper(object):
         """
         logging.debug("Beginning usermap rebuild.")
         newmap = {}
-        futures = {}
+        response = {}
         self._rebuild_userlist()
         for user in self._userlist:
-            futures[user] = self._retrieve_github_user_future(user)
-        for user in futures:
-            resp = self._slackcheck(futures[user])
+            response[user] = self._retrieve_github_user_response(user)
+        for user in response:
+            resp = self._slackcheck(response[user])
             if "profile" in resp:
                 ghuser = self._process_profile(resp["profile"])
                 if ghuser:
@@ -105,8 +105,8 @@ class Usermapper(object):
         moar = True
         userlist = []
         while moar:
-            future = self._get_slack_future(method, params)
-            retval = self._slackcheck(future)
+            resp = self._get_slack_response(method, params)
+            retval = self._slackcheck(resp)
             userlist = userlist + retval["members"]
             if ("response_metadata" in retval and
                 "next_cursor" in retval["response_metadata"] and
@@ -114,8 +114,6 @@ class Usermapper(object):
                 params["cursor"] = retval["response_metadata"]["next_cursor"]
             else:
                 moar = False
-            if moar:
-                time.sleep(1)  # To make Slack happy about rate-limiting.
         self.mutex.acquire()
         self._userlist = [u["id"] for u in userlist]
         self.mutex.release()
@@ -126,8 +124,8 @@ class Usermapper(object):
             "Content-Type": "application/x-www-form/urlencoded",
             "token": self.app_token,
         }
-        future = self._get_slack_future(method, params)
-        retval = self._slackcheck(future)
+        resp = self._get_slack_response(method, params)
+        retval = self._slackcheck(resp)
         if ("profile" in retval and retval["profile"] and
             "fields" in retval["profile"] and
                 retval["profile"]["fields"]):
@@ -141,14 +139,14 @@ class Usermapper(object):
         if not self.usermap_initialized:
             raise RuntimeError("Usermap not initialized.")
 
-    def _retrieve_github_user_future(self, user):
+    def _retrieve_github_user_response(self, user):
         method = "users.profile.get"
         params = {
             "Content-Type": "application/x-www-form/urlencoded",
             "token": self.app_token,
             "user": user
         }
-        return self._get_slack_future(method, params)
+        return self._get_slack_response(method, params)
 
     def _process_profile(self, profile):
         ghname = None
@@ -161,13 +159,22 @@ class Usermapper(object):
         logging.debug("Slack user %s -> GitHub user %r" % (dname, ghname))
         return ghname
 
-    def _get_slack_future(self, method, params):
+    def _get_slack_response(self, method, params):
         url = "https://slack.com/api/" + method
         future = self.session.get(url, params=params)
-        return future
-
-    def _slackcheck(self, future):
         resp = future.result()
+        return resp
+
+    def _slackcheck(self, resp):
+        sc = resp.status_code
+        if sc == 429:
+            delay = int(resp.headers['Retry-After'])
+            logging.warning("Slack API rate-limited.  Waiting %d s." % delay)
+            time.sleep(delay)
+            logging.warning("Retrying request.")
+            req = resp.request
+            future = self.session.get(req)
+            resp = future.result()
         resp.raise_for_status()
         retval = resp.json()
         if not retval["ok"]:

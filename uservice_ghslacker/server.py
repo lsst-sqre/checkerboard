@@ -12,14 +12,14 @@ except ImportError:
 from apikit import APIFlask, BackendError
 from flask import jsonify, request
 from threading import Thread
-from usermapper import Usermapper
+from .usermapper import Usermapper
 
 log = None
 USER = os.environ["GHSLACKER_USER"]
 PW = os.environ["GHSLACKER_PW"]
 FIELD = os.environ.get("GHSLACKER_FIELD") or "GitHub Username"
 SCHED = sched.scheduler(time.time, time.sleep)
-CACHE_LIFETIME = 3600  # seconds
+CACHE_LIFETIME = int(os.environ.get("GHSLACKER_CACHE_LIFETIME") or 3600)
 
 
 def server(run_standalone=False):
@@ -27,7 +27,7 @@ def server(run_standalone=False):
     """
     # Add "/ghslacker" for mapping behind api.lsst.codes
     app = APIFlask(name="uservice-ghslacker",
-                   version="0.0.1",
+                   version="0.0.6",
                    repository="https://github.com/sqre-lsst/uservice-ghslacker",
                    description="Slack <-> GitHub user mapper",
                    route=["/", "/ghslacker"],
@@ -41,6 +41,7 @@ def server(run_standalone=False):
     global log
     # Gross, but efficacious
     log = app.config["LOGGER"]
+    app.config["CACHE_LIFETIME"] = CACHE_LIFETIME
 
     @app.errorhandler(BackendError)
     # pylint can't understand decorators.
@@ -116,6 +117,8 @@ def server(run_standalone=False):
 
     def _precheck():
         _auth()
+        if not app.config["MAPPER"]:
+            _set_mapper()
         app.config["MAPPER"].wait_for_initialization()
 
     def _auth():
@@ -138,8 +141,19 @@ def server(run_standalone=False):
                                content="Failed to get mapper object.",
                                status_code=500)
         app.config["MAPPER"] = mapper
-        SCHED.enter(CACHE_LIFETIME, 1, mapper.rebuild_usermap, ())
+        SCHED.enter(app.config["CACHE_LIFETIME"], 1, _repeater, ())
         Thread(target=SCHED.run, name='mapbuilder').start()
+
+    def _repeater():
+        mapper = app.config["MAPPER"]
+        mapper.rebuild_usermap()
+        cachelife = app.config["CACHE_LIFETIME"]
+        min_cache = 0.6 * len(mapper.usermap)
+        if cachelife < min_cache:
+            log.warning("Increasing cache lifetime to %f" % min_cache)
+            cachelife = min_cache
+            app.config["CACHE_LIFETIME"] = cachelife
+        SCHED.enter(cachelife, 1, _repeater, ())
 
     if run_standalone:
         app.run(host='0.0.0.0', threaded=True)
