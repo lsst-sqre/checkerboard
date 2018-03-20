@@ -19,7 +19,7 @@ USER = os.environ["GHSLACKER_USER"]
 PW = os.environ["GHSLACKER_PW"]
 FIELD = os.environ.get("GHSLACKER_FIELD") or "GitHub Username"
 SCHED = sched.scheduler(time.time, time.sleep)
-CACHE_LIFETIME = int(os.environ.get("GHSLACKER_CACHE_LIFETIME")) or 3600
+CACHE_LIFETIME = int(os.environ.get("GHSLACKER_CACHE_LIFETIME") or 3600)
 
 
 def server(run_standalone=False):
