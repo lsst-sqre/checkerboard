@@ -27,7 +27,7 @@ def server(run_standalone=False):
     """
     # Add "/ghslacker" for mapping behind api.lsst.codes
     app = APIFlask(name="uservice-ghslacker",
-                   version="0.0.6",
+                   version="0.0.7",
                    repository="https://github.com/sqre-lsst/uservice-ghslacker",
                    description="Slack <-> GitHub user mapper",
                    route=["/", "/ghslacker"],
@@ -37,11 +37,8 @@ def server(run_standalone=False):
                                   }
                          }
                    )
-    app.config["MAPPER"] = None
-    global log
-    # Gross, but efficacious
-    log = app.config["LOGGER"]
-    app.config["CACHE_LIFETIME"] = CACHE_LIFETIME
+
+    # Add our internal functions.
 
     @app.errorhandler(BackendError)
     # pylint can't understand decorators.
@@ -69,11 +66,6 @@ def server(run_standalone=False):
     def get_usermap():
         """Slack <-> GitHub user mapper.  Returns entire user map as JSON.
         """
-        # FIXME: service logic goes here
-        # See https://sqr-015.lsst.io for details.
-        # - raise errors as BackendError
-        # - return your results with jsonify
-        # - set status_code on the response as needed
         _precheck()
         return jsonify(app.config["MAPPER"].usermap)
 
@@ -115,11 +107,14 @@ def server(run_standalone=False):
         raise BackendError(reason="Not Found", status_code=404,
                            content="GitHub User %s not found" % github_user)
 
-    def _precheck():
-        _auth()
+    def _init_map():
         if not app.config["MAPPER"]:
             _set_mapper()
         app.config["MAPPER"].wait_for_initialization()
+
+    def _precheck():
+        _auth()
+        _init_map()
 
     def _auth():
         if request.authorization is None:
@@ -154,6 +149,14 @@ def server(run_standalone=False):
             cachelife = min_cache
             app.config["CACHE_LIFETIME"] = cachelife
         SCHED.enter(cachelife, 1, _repeater, ())
+
+    # Back to mainline code: do initialization stuff.
+    app.config["MAPPER"] = None
+    global log
+    # Gross, but efficacious
+    log = app.config["LOGGER"]
+    app.config["CACHE_LIFETIME"] = CACHE_LIFETIME
+    _init_map()
 
     if run_standalone:
         app.run(host='0.0.0.0', threaded=True)
