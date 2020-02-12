@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: u-ghslacker
+  labels:
+    app: u-ghslacker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: u-ghslacker
+  template:
+    metadata:
+      labels:
+        name: u-ghslacker
+    spec:
+      containers:
+        - name: u-ghslacker
+          image: lsstsqre/uservice-ghslacker
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5000
+              name: u-ghslacker
+          env:
+            - name: LOGLEVEL
+              value: INFO
+            - name: GHSLACKER_USER
+              valueFrom:
+                secretKeyRef:
+                  name: u-ghslacker
+                  key: ghslacker.user
+            - name: GHSLACKER_PW
+              valueFrom:
+                secretKeyRef:
+                  name: u-ghslacker
+                  key: ghslacker.pw
+            - name: SLACK_APP_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: u-ghslacker
+                  key: slack.app.token
+            - name: SLACK_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: u-ghslacker
+                  key: slack.bot.token
