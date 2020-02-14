@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/lsst-sqre/uservice-ghslacker.svg?branch=master)](https://travis-ci.org/lsst-sqre/uservice-ghslacker)
+[![Build Status](https://travis-ci.com/lsst-sqre/uservice-ghslacker.svg?branch=master)](https://travis-ci.com/lsst-sqre/uservice-ghslacker)
 
 # sqre-uservice-ghslacker
 
