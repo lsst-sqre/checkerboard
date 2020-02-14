@@ -44,7 +44,7 @@ setup(
     packages=find_packages(exclude=['docs', 'tests*']),
     install_requires=[
         'sqre-apikit==0.1.1',
-        'uWSGI==2.0.14',
+        'uWSGI==2.0.18',
         'requests-futures==0.9.7'
     ],
     tests_require=['pytest'],
