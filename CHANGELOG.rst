@@ -2,7 +2,7 @@
 Change log
 ##########
 
-0.1.0 (unreleased)
+0.1.0 (2020-02-13)
 ==================
 
 - userve-ghslacker can now be deployed through Kustomize.
