@@ -27,7 +27,7 @@ def server(run_standalone=False):
     """
     # Add "/ghslacker" for mapping behind api.lsst.codes
     app = APIFlask(name="uservice-ghslacker",
-                   version="0.0.7",
+                   version="0.1.0",
                    repository="https://github.com/sqre-lsst/uservice-ghslacker",
                    description="Slack <-> GitHub user mapper",
                    route=["/", "/ghslacker"],

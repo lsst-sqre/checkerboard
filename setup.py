@@ -10,7 +10,7 @@ DESCRIPTION = 'Slack <-> GitHub user mapper'
 AUTHOR = 'Adam Thornton'
 AUTHOR_EMAIL = 'athornton@lsst.org'
 URL = 'https://github.com/sqre-lsst/uservice-ghslacker'
-VERSION = '0.0.7'
+VERSION = '0.1.0'
 LICENSE = 'MIT'
 
 
