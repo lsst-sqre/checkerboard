@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: ghslacker
-          image: lsstsqre/uservice-ghslacker:0.1.0
+          image: lsstsqre/uservice-ghslacker:0.1.1
           imagePullPolicy: Always
           ports:
             - containerPort: 5000

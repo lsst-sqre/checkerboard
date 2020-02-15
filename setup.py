@@ -10,7 +10,7 @@ DESCRIPTION = 'Slack <-> GitHub user mapper'
 AUTHOR = 'Adam Thornton'
 AUTHOR_EMAIL = 'athornton@lsst.org'
 URL = 'https://github.com/sqre-lsst/uservice-ghslacker'
-VERSION = '0.1.0'
+VERSION = '0.1.1'
 LICENSE = 'MIT'
 
 
@@ -43,7 +43,7 @@ setup(
     keywords='lsst',
     packages=find_packages(exclude=['docs', 'tests*']),
     install_requires=[
-        'sqre-apikit==0.1.1',
+        'sqre-apikit==0.1.3',
         'uWSGI==2.0.18',
         'requests-futures==0.9.7'
     ],
