@@ -2,6 +2,11 @@
 Change log
 ##########
 
+0.1.1 (2020-02-14)
+==================
+
+- Bump dependency on sqre-apikit to pick up a fix for a conflict between older Flsk and new werkzeug.
+
 0.1.0 (2020-02-13)
 ==================
 
