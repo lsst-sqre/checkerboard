@@ -2,7 +2,7 @@
 Change log
 ##########
 
-0.2.0 (unreleased)
+0.2.0 (2020-02-19)
 ==================
 
 With this release, the package is now named Checkerboard.
