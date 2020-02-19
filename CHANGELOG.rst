@@ -12,6 +12,8 @@ See ``README.md`` for more information about the naming choice.
 - Rename the Python package from ``uservice_ghslacker`` to ``checkerboard``.
 - Change environment variables controlling application settings to start with ``CHECKERBOARD_`` instead of ``GHSLACKER_``.
 - Change all routes from ``/ghslacker`` to ``/checkerboard``.
+- Base the Docker container on python:3.7 instead of centos:7.
+  This saves some setup work and is based on a standard buildpack-deps container.
 - Add a trivial test so that the test suite can run.
   More extensive tests will be added later after a refactoring.
 
