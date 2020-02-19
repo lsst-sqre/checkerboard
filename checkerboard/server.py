@@ -22,7 +22,7 @@ SCHED = sched.scheduler(time.time, time.sleep)
 CACHE_LIFETIME = int(os.environ.get("CHECKERBOARD_CACHE_LIFETIME") or 3600)
 
 
-def server(run_standalone=False):
+def server(run_standalone=False, start_usermapper=True):
     """Create the app and then run it.
     """
     # Add "/checkerboard" for mapping behind api.lsst.codes
@@ -156,7 +156,8 @@ def server(run_standalone=False):
     # Gross, but efficacious
     log = app.config["LOGGER"]
     app.config["CACHE_LIFETIME"] = CACHE_LIFETIME
-    _init_map()
+    if start_usermapper:
+        _init_map()
 
     if run_standalone:
         app.run(host='0.0.0.0', threaded=True)
