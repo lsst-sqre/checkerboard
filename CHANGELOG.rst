@@ -20,7 +20,7 @@ See ``README.md`` for more information about the naming choice.
 0.1.1 (2020-02-14)
 ==================
 
-- Bump dependency on sqre-apikit to pick up a fix for a conflict between older Flsk and new werkzeug.
+- Bump dependency on sqre-apikit to pick up a fix for a conflict between older Flask and new werkzeug.
 
 0.1.0 (2020-02-13)
 ==================
