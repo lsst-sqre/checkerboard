@@ -2,6 +2,17 @@
 Change log
 ##########
 
+0.2.0 (unreleased)
+==================
+
+With this release, the package is now named Checkerboard.
+See ``README.md`` for more information about the naming choice.
+
+- Rename the package in multiple places.
+- Rename the Python package from ``uservice_ghslacker`` to ``checkerboard``.
+- Change environment variables controlling application settings to start with ``CHECKERBOARD_`` instead of ``GHSLACKER_``.
+- Change all routes from ``/ghslacker`` to ``/checkerboard``.
+
 0.1.1 (2020-02-14)
 ==================
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""ghslacker microservice framework.
+"""Checkerboard microservice framework.
 """
 # Python 2/3 compatibility
 import os
@@ -15,22 +15,22 @@ from threading import Thread
 from .usermapper import Usermapper
 
 log = None
-USER = os.environ["GHSLACKER_USER"]
-PW = os.environ["GHSLACKER_PW"]
-FIELD = os.environ.get("GHSLACKER_FIELD") or "GitHub Username"
+USER = os.environ["CHECKERBOARD_USER"]
+PW = os.environ["CHECKERBOARD_PW"]
+FIELD = os.environ.get("CHECKERBOARD_FIELD") or "GitHub Username"
 SCHED = sched.scheduler(time.time, time.sleep)
-CACHE_LIFETIME = int(os.environ.get("GHSLACKER_CACHE_LIFETIME") or 3600)
+CACHE_LIFETIME = int(os.environ.get("CHECKERBOARD_CACHE_LIFETIME") or 3600)
 
 
 def server(run_standalone=False):
     """Create the app and then run it.
     """
-    # Add "/ghslacker" for mapping behind api.lsst.codes
-    app = APIFlask(name="uservice-ghslacker",
-                   version="0.1.1",
-                   repository="https://github.com/sqre-lsst/uservice-ghslacker",
+    # Add "/checkerboard" for mapping behind api.lsst.codes
+    app = APIFlask(name="checkerboard",
+                   version="0.2.0",
+                   repository="https://github.com/sqre-lsst/checkerboard",
                    description="Slack <-> GitHub user mapper",
-                   route=["/", "/ghslacker"],
+                   route=["/", "/checkerboard"],
                    auth={"type": "basic",
                          "data": {"username": USER,
                                   "password": PW
@@ -58,10 +58,10 @@ def server(run_standalone=False):
         """
         return "OK"
 
-    @app.route("/ghslacker")
-    @app.route("/ghslacker/")
-    @app.route("/ghslacker/usermap")
-    # @app.route("/ghslacker/<parameter>")
+    @app.route("/checkerboard")
+    @app.route("/checkerboard/")
+    @app.route("/checkerboard/usermap")
+    # @app.route("/checkerboard/<parameter>")
     # or, if you have a parameter, def route_function(parameter=None):
     def get_usermap():
         """Slack <-> GitHub user mapper.  Returns entire user map as JSON.
@@ -69,10 +69,10 @@ def server(run_standalone=False):
         _precheck()
         return jsonify(app.config["MAPPER"].usermap)
 
-    @app.route("/ghslacker/<slack_user>")
-    @app.route("/ghslacker/<slack_user>/")
-    @app.route("/ghslacker/slack/<slack_user>")
-    @app.route("/ghslacker/slack/<slack_user>/")
+    @app.route("/checkerboard/<slack_user>")
+    @app.route("/checkerboard/<slack_user>/")
+    @app.route("/checkerboard/slack/<slack_user>")
+    @app.route("/checkerboard/slack/<slack_user>/")
     def get_github_user(slack_user=None):
         """Returns JSON object mapping Slack user to GitHub user, given
         Slack user."""
@@ -89,8 +89,8 @@ def server(run_standalone=False):
         raise BackendError(reason="Not Found", status_code=404,
                            content="Slack User %s not found" % slack_user)
 
-    @app.route("/ghslacker/github/<github_user>")
-    @app.route("/ghslacker/github/<github_user>/")
+    @app.route("/checkerboard/github/<github_user>")
+    @app.route("/checkerboard/github/<github_user>/")
     def get_slack_user(github_user=None):
         """Returns JSON object mapping Slack user to GitHub user, given
         GitHub user."""

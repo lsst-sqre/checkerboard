@@ -1,7 +1,7 @@
 FROM       centos:7
 MAINTAINER sqre-admin
 LABEL      description="Slack <-> GitHub user mapper" \
-           name="lsstsqre/uservice-ghslacker"
+           name="lsstsqre/checkerboard"
 
 USER       root
 RUN        yum install -y epel-release
@@ -13,10 +13,10 @@ RUN        useradd -d /home/uwsgi -m uwsgi
 RUN        mkdir /dist
 
 # Must run python setup.py sdist first.
-ARG        VERSION="0.1.1"
+ARG        VERSION="0.2.0"
 LABEL      version="$VERSION"
-COPY       dist/sqre-uservice-ghslacker-$VERSION.tar.gz /dist
-RUN        pip install /dist/sqre-uservice-ghslacker-$VERSION.tar.gz
+COPY       dist/checkerboard-$VERSION.tar.gz /dist
+RUN        pip install /dist/checkerboard-$VERSION.tar.gz
 
 USER       uwsgi
 WORKDIR    /home/uwsgi

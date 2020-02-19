@@ -5,12 +5,12 @@ import os
 import codecs
 from setuptools import setup, find_packages
 
-PACKAGENAME = 'sqre-uservice-ghslacker'
+PACKAGENAME = 'checkerboard'
 DESCRIPTION = 'Slack <-> GitHub user mapper'
 AUTHOR = 'Adam Thornton'
 AUTHOR_EMAIL = 'athornton@lsst.org'
-URL = 'https://github.com/sqre-lsst/uservice-ghslacker'
-VERSION = '0.1.1'
+URL = 'https://github.com/sqre-lsst/checkerboard'
+VERSION = '0.2.0'
 LICENSE = 'MIT'
 
 
@@ -50,8 +50,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'sqre-uservice-ghslacker = uservice_' +
-            'ghslacker:standalone'
+            'checkerboard = checkerboard:standalone',
         ]
     }
 )
