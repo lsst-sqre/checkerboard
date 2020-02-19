@@ -1,46 +1,46 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ghslacker
+  name: checkerboard
   labels:
-    app: ghslacker
+    app: checkerboard
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: ghslacker
+      app: checkerboard
   template:
     metadata:
       labels:
-        app: ghslacker
+        app: checkerboard
     spec:
       containers:
-        - name: ghslacker
-          image: lsstsqre/uservice-ghslacker:0.1.1
+        - name: checkerboard
+          image: lsstsqre/checkerboard:0.2.0
           imagePullPolicy: Always
           ports:
             - containerPort: 5000
-              name: ghslacker
+              name: checkerboard
           env:
             - name: LOGLEVEL
               value: INFO
-            - name: GHSLACKER_USER
+            - name: CHECKERBOARD_USER
               valueFrom:
                 secretKeyRef:
-                  name: ghslacker
-                  key: ghslacker.user
-            - name: GHSLACKER_PW
+                  name: checkerboard
+                  key: checkerboard.user
+            - name: CHECKERBOARD_PW
               valueFrom:
                 secretKeyRef:
-                  name: ghslacker
-                  key: ghslacker.pw
+                  name: checkerboard
+                  key: checkerboard.pw
             - name: SLACK_APP_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: ghslacker
+                  name: checkerboard
                   key: slack.app.token
             - name: SLACK_BOT_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: ghslacker
+                  name: checkerboard
                   key: slack.bot.token
