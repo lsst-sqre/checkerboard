@@ -6,8 +6,9 @@ metadata:
     app: checkerboard
 spec:
   ports:
-    - name: http
+    - name: checkerboard-http
       protocol: TCP
       port: 5000
+      targetPort: app
   selector:
-    app: checkerboard
+    name: checkerboard

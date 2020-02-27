@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: checkerboard
+data:
+  LOGLEVEL: "INFO"
+  SAFIR_NAME: "checkerboard"
+  SAFIR_PROFILE: "production"
+  SAFIR_LOGGER: "checkerboard"
+  SAFIR_LOG_LEVEL: "INFO"

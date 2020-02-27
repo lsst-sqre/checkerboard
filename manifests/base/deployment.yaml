@@ -8,22 +8,23 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: checkerboard
+      name: checkerboard
   template:
     metadata:
       labels:
-        app: checkerboard
+        name: checkerboard
     spec:
       containers:
         - name: checkerboard
-          image: lsstsqre/checkerboard:0.2.0
-          imagePullPolicy: Always
+          imagePullPolicy: "Always"
+          image: "lsstsqre/checkerboard"
           ports:
             - containerPort: 5000
-              name: checkerboard
+              name: app
+          envFrom:
+            - configMapRef:
+                name: checkerboard
           env:
-            - name: LOGLEVEL
-              value: INFO
             - name: CHECKERBOARD_USER
               valueFrom:
                 secretKeyRef:
