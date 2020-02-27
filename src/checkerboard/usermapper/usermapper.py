@@ -2,8 +2,9 @@
 
 import logging
 import time
-from requests_futures.sessions import FuturesSession
 from threading import Lock, Thread
+
+from requests_futures.sessions import FuturesSession
 
 
 class Usermapper(object):
@@ -20,8 +21,13 @@ class Usermapper(object):
     field_id = None
     mutex = None
 
-    def __init__(self, bot_token=None, app_token=None,
-                 field_name="GitHub Username", max_workers=50):
+    def __init__(
+        self,
+        bot_token=None,
+        app_token=None,
+        field_name="GitHub Username",
+        max_workers=50,
+    ):
         self.bot_token = bot_token
         self.app_token = app_token
         self.mutex = Lock()
@@ -29,7 +35,7 @@ class Usermapper(object):
         self.field_id = self._get_field_id(field_name)
         self.session.max_workers = min(max_workers, len(self._userlist))
         logging.debug("Building usermap.")
-        Thread(target=self.rebuild_usermap, name='mapbuilder').start()
+        Thread(target=self.rebuild_usermap, name="mapbuilder").start()
 
     def github_for_slack_user(self, user):
         """Return the usermap entry for a given Slack user (which should be
@@ -99,7 +105,7 @@ class Usermapper(object):
         """
         params = {
             "Content-Type": "application/x-www-form/urlencoded",
-            "token": self.bot_token
+            "token": self.bot_token,
         }
         method = "users.list"
         moar = True
@@ -108,9 +114,11 @@ class Usermapper(object):
             resp = self._get_slack_response(method, params)
             retval = self._slackcheck(resp)
             userlist = userlist + retval["members"]
-            if ("response_metadata" in retval and
-                "next_cursor" in retval["response_metadata"] and
-                    retval["response_metadata"]["next_cursor"]):
+            if (
+                "response_metadata" in retval
+                and "next_cursor" in retval["response_metadata"]
+                and retval["response_metadata"]["next_cursor"]
+            ):
                 params["cursor"] = retval["response_metadata"]["next_cursor"]
             else:
                 moar = False
@@ -126,12 +134,18 @@ class Usermapper(object):
         }
         resp = self._get_slack_response(method, params)
         retval = self._slackcheck(resp)
-        if ("profile" in retval and retval["profile"] and
-            "fields" in retval["profile"] and
-                retval["profile"]["fields"]):
+        if (
+            "profile" in retval
+            and retval["profile"]
+            and "fields" in retval["profile"]
+            and retval["profile"]["fields"]
+        ):
             for fld in retval["profile"]["fields"]:
-                if ("label" in fld and "id" in fld and
-                        fld["label"] == field_name):
+                if (
+                    "label" in fld
+                    and "id" in fld
+                    and fld["label"] == field_name
+                ):
                     return fld["id"]
         return None
 
@@ -144,7 +158,7 @@ class Usermapper(object):
         params = {
             "Content-Type": "application/x-www-form/urlencoded",
             "token": self.app_token,
-            "user": user
+            "user": user,
         }
         return self._get_slack_response(method, params)
 
@@ -152,9 +166,12 @@ class Usermapper(object):
         ghname = None
         fid = self.field_id
         dname = profile["display_name_normalized"]
-        if ("fields" in profile and profile["fields"] and
-                fid in profile["fields"] and "value" in
-                profile["fields"][fid]):
+        if (
+            "fields" in profile
+            and profile["fields"]
+            and fid in profile["fields"]
+            and "value" in profile["fields"][fid]
+        ):
             ghname = profile["fields"][fid]["value"]
         logging.debug("Slack user %s -> GitHub user %r" % (dname, ghname))
         return ghname
@@ -168,7 +185,7 @@ class Usermapper(object):
     def _slackcheck(self, resp):
         sc = resp.status_code
         if sc == 429:
-            delay = int(resp.headers['Retry-After'])
+            delay = int(resp.headers["Retry-After"])
             logging.warning("Slack API rate-limited.  Waiting %d s." % delay)
             time.sleep(delay)
             logging.warning("Retrying request.")
@@ -178,7 +195,9 @@ class Usermapper(object):
         resp.raise_for_status()
         retval = resp.json()
         if not retval["ok"]:
-            errstr = "Slack API request '%s' failed: %s" % (resp.request.url,
-                                                            retval["error"])
+            errstr = "Slack API request '%s' failed: %s" % (
+                resp.request.url,
+                retval["error"],
+            )
             raise RuntimeError(errstr)
         return retval

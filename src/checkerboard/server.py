@@ -5,14 +5,17 @@
 import os
 import sched
 import time
+from threading import Thread
+
+from apikit import APIFlask, BackendError
+from flask import jsonify, request
+
+from .usermapper import Usermapper
+
 try:
     from json.decoder import JSONDecodeError
 except ImportError:
     JSONDecodeError = ValueError
-from apikit import APIFlask, BackendError
-from flask import jsonify, request
-from threading import Thread
-from .usermapper import Usermapper
 
 log = None
 USER = os.environ["CHECKERBOARD_USER"]
@@ -26,17 +29,14 @@ def server(run_standalone=False, start_usermapper=True):
     """Create the app and then run it.
     """
     # Add "/checkerboard" for mapping behind api.lsst.codes
-    app = APIFlask(name="checkerboard",
-                   version="0.2.0",
-                   repository="https://github.com/sqre-lsst/checkerboard",
-                   description="Slack <-> GitHub user mapper",
-                   route=["/", "/checkerboard"],
-                   auth={"type": "basic",
-                         "data": {"username": USER,
-                                  "password": PW
-                                  }
-                         }
-                   )
+    app = APIFlask(
+        name="checkerboard",
+        version="0.2.0",
+        repository="https://github.com/sqre-lsst/checkerboard",
+        description="Slack <-> GitHub user mapper",
+        route=["/", "/checkerboard"],
+        auth={"type": "basic", "data": {"username": USER, "password": PW}},
+    )
 
     # Add our internal functions.
 
@@ -81,13 +81,18 @@ def server(run_standalone=False, start_usermapper=True):
             gh_user = app.config["MAPPER"].github_for_slack_user(slack_user)
             if gh_user:
                 return jsonify({slack_user: gh_user})
-            raise BackendError(reason="Not Found", status_code=404,
-                               content=("No GitHub user for Slack user %s" %
-                                        slack_user))
+            raise BackendError(
+                reason="Not Found",
+                status_code=404,
+                content=("No GitHub user for Slack user %s" % slack_user),
+            )
         else:
             slack_user = "<none>"
-        raise BackendError(reason="Not Found", status_code=404,
-                           content="Slack User %s not found" % slack_user)
+        raise BackendError(
+            reason="Not Found",
+            status_code=404,
+            content="Slack User %s not found" % slack_user,
+        )
 
     @app.route("/checkerboard/github/<github_user>")
     @app.route("/checkerboard/github/<github_user>/")
@@ -99,13 +104,18 @@ def server(run_standalone=False, start_usermapper=True):
             sl_user = app.config["MAPPER"].slack_for_github_user(github_user)
             if sl_user:
                 return jsonify({sl_user: github_user})
-            raise BackendError(reason="Not Found", status_code=404,
-                               content=("No Slack user for GitHub user %s" %
-                                        github_user))
+            raise BackendError(
+                reason="Not Found",
+                status_code=404,
+                content=("No Slack user for GitHub user %s" % github_user),
+            )
         else:
             github_user = "<none>"
-        raise BackendError(reason="Not Found", status_code=404,
-                           content="GitHub User %s not found" % github_user)
+        raise BackendError(
+            reason="Not Found",
+            status_code=404,
+            content="GitHub User %s not found" % github_user,
+        )
 
     def _init_map():
         if not app.config["MAPPER"]:
@@ -118,26 +128,36 @@ def server(run_standalone=False, start_usermapper=True):
 
     def _auth():
         if request.authorization is None:
-            raise BackendError(reason="Unauthorized", status_code=401,
-                               content="No authorization provided.")
+            raise BackendError(
+                reason="Unauthorized",
+                status_code=401,
+                content="No authorization provided.",
+            )
         inboundauth = request.authorization
-        if (inboundauth.username != USER or inboundauth.password != PW):
-            raise BackendError(reason="Unauthorized", status_code=401,
-                               content="Incorrect authorization.")
+        if inboundauth.username != USER or inboundauth.password != PW:
+            raise BackendError(
+                reason="Unauthorized",
+                status_code=401,
+                content="Incorrect authorization.",
+            )
         if not app.config["MAPPER"]:
             _set_mapper()
 
     def _set_mapper():
-        mapper = Usermapper(bot_token=os.environ["SLACK_BOT_TOKEN"],
-                            app_token=os.environ["SLACK_APP_TOKEN"],
-                            field_name=FIELD)
+        mapper = Usermapper(
+            bot_token=os.environ["SLACK_BOT_TOKEN"],
+            app_token=os.environ["SLACK_APP_TOKEN"],
+            field_name=FIELD,
+        )
         if not mapper:
-            raise BackendError(reason="Internal Server Error",
-                               content="Failed to get mapper object.",
-                               status_code=500)
+            raise BackendError(
+                reason="Internal Server Error",
+                content="Failed to get mapper object.",
+                status_code=500,
+            )
         app.config["MAPPER"] = mapper
         SCHED.enter(app.config["CACHE_LIFETIME"], 1, _repeater, ())
-        Thread(target=SCHED.run, name='mapbuilder').start()
+        Thread(target=SCHED.run, name="mapbuilder").start()
 
     def _repeater():
         mapper = app.config["MAPPER"]
@@ -160,7 +180,7 @@ def server(run_standalone=False, start_usermapper=True):
         _init_map()
 
     if run_standalone:
-        app.run(host='0.0.0.0', threaded=True)
+        app.run(host="0.0.0.0", threaded=True)
     # Otherwise, we're running under uwsgi, and it wants the app.
     return app
 
