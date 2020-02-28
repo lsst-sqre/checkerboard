@@ -4,7 +4,7 @@
 import os
 
 
-def test_app():
+def test_app() -> None:
     # The environment variables must be defined before the module is imported.
     os.environ["CHECKERBOARD_USER"] = "checkerboard"
     os.environ["CHECKERBOARD_PW"] = "password"

@@ -1,21 +1,23 @@
 #!/usr/bin/env python
 """Checkerboard microservice framework.
 """
-# Python 2/3 compatibility
+
+from __future__ import annotations
+
 import os
 import sched
 import time
 from threading import Thread
+from typing import TYPE_CHECKING
 
 from apikit import APIFlask, BackendError
 from flask import jsonify, request
 
 from .usermapper import Usermapper
 
-try:
-    from json.decoder import JSONDecodeError
-except ImportError:
-    JSONDecodeError = ValueError
+if TYPE_CHECKING:
+    from flask import Response
+    from typing import Optional
 
 log = None
 USER = os.environ["CHECKERBOARD_USER"]
@@ -25,7 +27,9 @@ SCHED = sched.scheduler(time.time, time.sleep)
 CACHE_LIFETIME = int(os.environ.get("CHECKERBOARD_CACHE_LIFETIME") or 3600)
 
 
-def server(run_standalone=False, start_usermapper=True):
+def server(
+    run_standalone: bool = False, start_usermapper: bool = True
+) -> APIFlask:
     """Create the app and then run it.
     """
     # Add "/checkerboard" for mapping behind api.lsst.codes
@@ -43,17 +47,17 @@ def server(run_standalone=False, start_usermapper=True):
     @app.errorhandler(BackendError)
     # pylint can't understand decorators.
     # pylint: disable=unused-variable
-    def handle_invalid_usage(error):
+    def handle_invalid_usage(error: BackendError) -> Response:
         """Custom error handler.
         """
         errdict = error.to_dict()
-        log.error(errdict)
+        log.error(errdict)  # type: ignore
         response = jsonify(errdict)
         response.status_code = error.status_code
         return response
 
     @app.route("/")
-    def healthcheck():
+    def healthcheck() -> str:
         """Default route to keep Ingress controller happy.
         """
         return "OK"
@@ -63,7 +67,7 @@ def server(run_standalone=False, start_usermapper=True):
     @app.route("/checkerboard/usermap")
     # @app.route("/checkerboard/<parameter>")
     # or, if you have a parameter, def route_function(parameter=None):
-    def get_usermap():
+    def get_usermap() -> Response:
         """Slack <-> GitHub user mapper.  Returns entire user map as JSON.
         """
         _precheck()
@@ -73,7 +77,7 @@ def server(run_standalone=False, start_usermapper=True):
     @app.route("/checkerboard/<slack_user>/")
     @app.route("/checkerboard/slack/<slack_user>")
     @app.route("/checkerboard/slack/<slack_user>/")
-    def get_github_user(slack_user=None):
+    def get_github_user(slack_user: Optional[str] = None) -> Response:
         """Returns JSON object mapping Slack user to GitHub user, given
         Slack user."""
         _precheck()
@@ -96,7 +100,7 @@ def server(run_standalone=False, start_usermapper=True):
 
     @app.route("/checkerboard/github/<github_user>")
     @app.route("/checkerboard/github/<github_user>/")
-    def get_slack_user(github_user=None):
+    def get_slack_user(github_user: Optional[str] = None) -> Response:
         """Returns JSON object mapping Slack user to GitHub user, given
         GitHub user."""
         _precheck()
@@ -117,16 +121,16 @@ def server(run_standalone=False, start_usermapper=True):
             content="GitHub User %s not found" % github_user,
         )
 
-    def _init_map():
+    def _init_map() -> None:
         if not app.config["MAPPER"]:
             _set_mapper()
         app.config["MAPPER"].wait_for_initialization()
 
-    def _precheck():
+    def _precheck() -> None:
         _auth()
         _init_map()
 
-    def _auth():
+    def _auth() -> None:
         if request.authorization is None:
             raise BackendError(
                 reason="Unauthorized",
@@ -143,7 +147,7 @@ def server(run_standalone=False, start_usermapper=True):
         if not app.config["MAPPER"]:
             _set_mapper()
 
-    def _set_mapper():
+    def _set_mapper() -> None:
         mapper = Usermapper(
             bot_token=os.environ["SLACK_BOT_TOKEN"],
             app_token=os.environ["SLACK_APP_TOKEN"],
@@ -159,13 +163,15 @@ def server(run_standalone=False, start_usermapper=True):
         SCHED.enter(app.config["CACHE_LIFETIME"], 1, _repeater, ())
         Thread(target=SCHED.run, name="mapbuilder").start()
 
-    def _repeater():
+    def _repeater() -> None:
         mapper = app.config["MAPPER"]
         mapper.rebuild_usermap()
         cachelife = app.config["CACHE_LIFETIME"]
         min_cache = 0.6 * len(mapper.usermap)
         if cachelife < min_cache:
-            log.warning("Increasing cache lifetime to %f" % min_cache)
+            log.warning(  # type: ignore
+                "Increasing cache lifetime to %f" % min_cache
+            )
             cachelife = min_cache
             app.config["CACHE_LIFETIME"] = cachelife
         SCHED.enter(cachelife, 1, _repeater, ())
@@ -185,7 +191,7 @@ def server(run_standalone=False, start_usermapper=True):
     return app
 
 
-def standalone():
+def standalone() -> None:
     """Entry point for running as its own executable.
     """
     server(run_standalone=True)

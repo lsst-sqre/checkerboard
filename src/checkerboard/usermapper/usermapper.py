@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
 
+from __future__ import annotations
+
 import logging
 import time
 from threading import Lock, Thread
+from typing import TYPE_CHECKING
 
 from requests_futures.sessions import FuturesSession
+
+if TYPE_CHECKING:
+    from requests import Response
+    from typing import Any, Dict, List, Optional
 
 
 class Usermapper(object):
@@ -12,22 +19,17 @@ class Usermapper(object):
     provided field, which for LSST is "GitHub Username".
     """
 
-    usermap = {}
-    _userlist = []
-    session = None
+    usermap: Dict[str, str] = {}
+    _userlist: List[str] = []
     usermap_initialized = False
-    bot_token = None
-    app_token = None
-    field_id = None
-    mutex = None
 
     def __init__(
         self,
-        bot_token=None,
-        app_token=None,
-        field_name="GitHub Username",
-        max_workers=50,
-    ):
+        bot_token: str,
+        app_token: str,
+        field_name: str = "GitHub Username",
+        max_workers: int = 50,
+    ) -> None:
         self.bot_token = bot_token
         self.app_token = app_token
         self.mutex = Lock()
@@ -37,7 +39,7 @@ class Usermapper(object):
         logging.debug("Building usermap.")
         Thread(target=self.rebuild_usermap, name="mapbuilder").start()
 
-    def github_for_slack_user(self, user):
+    def github_for_slack_user(self, user: str) -> Optional[str]:
         """Return the usermap entry for a given Slack user (which should be
         the GitHub Username field).  None if there is no match.  Case-
         sensitive on the Slack side, forced to lower on the GitHub side.
@@ -46,8 +48,10 @@ class Usermapper(object):
         u = self.usermap.get(user)
         if u:
             return u.lower()
+        else:
+            return None
 
-    def slack_for_github_user(self, user):
+    def slack_for_github_user(self, user: str) -> Optional[str]:
         """Given a GitHub Username, return the first Slack username that has
         that name in the GitHub Username field, or None.  Not case-sensitive.
         """
@@ -57,7 +61,7 @@ class Usermapper(object):
         self._check_initialization()
         return None
 
-    def rebuild_usermap(self):
+    def rebuild_usermap(self) -> None:
         """Rebuild the entire Slack user -> GitHub user map.
         """
         logging.debug("Beginning usermap rebuild.")
@@ -82,7 +86,7 @@ class Usermapper(object):
         self.mutex.release()
         logging.debug("Usermap built.")
 
-    def check_initialization(self):
+    def check_initialization(self) -> bool:
         """Returns True if the usermap has been built, False otherwise.
         """
         try:
@@ -91,7 +95,7 @@ class Usermapper(object):
         except RuntimeError:
             return False
 
-    def wait_for_initialization(self, delay=1):
+    def wait_for_initialization(self, delay: int = 1) -> None:
         """Polls, with specified delay, until the usermap has been built.
         """
         while True:
@@ -100,7 +104,7 @@ class Usermapper(object):
             logging.debug("Usermap not initialized; sleeping %d s." % delay)
             time.sleep(delay)
 
-    def _rebuild_userlist(self):
+    def _rebuild_userlist(self) -> None:
         """Get all users of this Slack instance by id.
         """
         params = {
@@ -109,7 +113,7 @@ class Usermapper(object):
         }
         method = "users.list"
         moar = True
-        userlist = []
+        userlist: List[Dict[str, Any]] = []
         while moar:
             resp = self._get_slack_response(method, params)
             retval = self._slackcheck(resp)
@@ -126,7 +130,7 @@ class Usermapper(object):
         self._userlist = [u["id"] for u in userlist]
         self.mutex.release()
 
-    def _get_field_id(self, field_name):
+    def _get_field_id(self, field_name: str) -> Optional[str]:
         method = "team.profile.get"
         params = {
             "Content-Type": "application/x-www-form/urlencoded",
@@ -149,11 +153,11 @@ class Usermapper(object):
                     return fld["id"]
         return None
 
-    def _check_initialization(self):
+    def _check_initialization(self) -> None:
         if not self.usermap_initialized:
             raise RuntimeError("Usermap not initialized.")
 
-    def _retrieve_github_user_response(self, user):
+    def _retrieve_github_user_response(self, user: str) -> Response:
         method = "users.profile.get"
         params = {
             "Content-Type": "application/x-www-form/urlencoded",
@@ -162,7 +166,7 @@ class Usermapper(object):
         }
         return self._get_slack_response(method, params)
 
-    def _process_profile(self, profile):
+    def _process_profile(self, profile: Dict[str, Any]) -> Optional[str]:
         ghname = None
         fid = self.field_id
         dname = profile["display_name_normalized"]
@@ -176,13 +180,15 @@ class Usermapper(object):
         logging.debug("Slack user %s -> GitHub user %r" % (dname, ghname))
         return ghname
 
-    def _get_slack_response(self, method, params):
+    def _get_slack_response(
+        self, method: str, params: Dict[str, str]
+    ) -> Response:
         url = "https://slack.com/api/" + method
         future = self.session.get(url, params=params)
         resp = future.result()
         return resp
 
-    def _slackcheck(self, resp):
+    def _slackcheck(self, resp: Response) -> Dict[str, Any]:
         sc = resp.status_code
         if sc == 429:
             delay = int(resp.headers["Retry-After"])
