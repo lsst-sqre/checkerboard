@@ -93,5 +93,5 @@ exclude = '''
 [tool.isort]
 multi_line_output = 3
 known_first_party = "checkerboard"
-known_third_party = ["apikit", "flask", "requests_futures", "setuptools"]
+known_third_party = ["aiohttp", "apikit", "flask", "requests_futures", "setuptools", "slack"]
 skip = ["docs/conf.py"]

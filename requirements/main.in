@@ -5,6 +5,7 @@
 # After editing, update requirements/main.txt by running:
 #     make update-deps
 
+slackclient[optional]
 sqre-apikit==0.1.3
 uWSGI==2.0.18
 requests-futures==0.9.7
