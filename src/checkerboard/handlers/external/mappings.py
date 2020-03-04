@@ -22,7 +22,7 @@ async def get_slack_mappings(request: web.Request) -> web.Response:
     return web.Response(text=mapper.json(), content_type="application/json")
 
 
-@routes.get("/slack/{user}")
+@routes.get("/slack/{slack_id}")
 async def get_user_mapping_by_slack(request: web.Request) -> web.Response:
     """GET map for a single user by Slack ID.
 
@@ -31,15 +31,16 @@ async def get_user_mapping_by_slack(request: web.Request) -> web.Response:
     user.  Otherwise, returns 404.
     """
     mapper = request.config_dict["checkerboard/mapper"]
-    user = request.match_info["user"]
-    github = mapper.github_for_slack_user(user)
-    if github:
-        return web.json_response({user: github})
+    slack_id = request.match_info["slack_id"]
+    github_id = mapper.github_for_slack_user(slack_id)
+    if github_id:
+        return web.json_response({slack_id: github_id})
     else:
-        return web.Response(status=404, text=f"Slack user {user} not found")
+        msg = f"Slack user {slack_id} not found"
+        return web.Response(status=404, text=msg)
 
 
-@routes.get("/github/{user}")
+@routes.get("/github/{github_id}")
 async def get_user_mapping_by_github(request: web.Request) -> web.Response:
     """GET map for a single user by GitHub user.
 
@@ -48,10 +49,10 @@ async def get_user_mapping_by_github(request: web.Request) -> web.Response:
     user.  Otherwise, returns 404.
     """
     mapper = request.config_dict["checkerboard/mapper"]
-    user = request.match_info["user"]
-    slack = mapper.slack_for_github_user(user)
-    if slack:
-        return web.json_response({slack: user})
+    github_id = request.match_info["github_id"]
+    slack_id = mapper.slack_for_github_user(github_id)
+    if slack_id:
+        return web.json_response({slack_id: github_id})
     else:
-        msg = f"Slack user for GitHub user {user} not found"
+        msg = f"Slack user for GitHub user {github_id} not found"
         return web.Response(status=404, text=msg)

@@ -64,23 +64,23 @@ class SlackGitHubMapper(object):
         self._github_to_slack: Dict[str, str] = {}
         self._lock = Lock()
 
-    def github_for_slack_user(self, user: str) -> Optional[str]:
+    def github_for_slack_user(self, slack_id: str) -> Optional[str]:
         """Return the GitHub user for a Slack user ID, if any.
 
         Parameters
         ----------
-        user : `str`
+        slack_id : `str`
             The Slack user ID (not the display name or real name).
 
         Returns
         -------
-        github : `str` or `None`
+        github_id : `str` or `None`
             The corresponding GitHub username coerced to lowercase, or None if
             that Slack user does not exist or does not have a GitHub user set
             in their profile.
         """
         with self._lock:
-            return self._slack_to_github.get(user)
+            return self._slack_to_github.get(slack_id)
 
     def json(self) -> str:
         """Return the map of Slack users to GitHub users as JSON.
@@ -114,13 +114,15 @@ class SlackGitHubMapper(object):
         # Get the list of users and then their profile data, enforcing a
         # concurrency limit on the profile fetches.
         slack_to_github: Dict[str, str] = {}
-        users = await self._get_user_list()
+        slack_ids = await self._get_user_list()
         semaphore = asyncio.Semaphore(self.slack_concurrency)
-        github_aws = [self._get_user_github(u, semaphore) for u in users]
-        github_users = await asyncio.gather(*github_aws)
-        for user, github in zip(users, github_users):
-            if github:
-                slack_to_github[user] = github
+        github_awaits = [
+            self._get_user_github(u, semaphore) for u in slack_ids
+        ]
+        github_ids = await asyncio.gather(*github_awaits)
+        for slack_id, github_id in zip(slack_ids, github_ids):
+            if github_id:
+                slack_to_github[slack_id] = github_id
         github_to_slack = {g: u for u, g in slack_to_github.items()}
 
         # Replace the cached data.
@@ -131,12 +133,13 @@ class SlackGitHubMapper(object):
         length = len(slack_to_github)
         logging.info("Refreshed GitHub map from Slack (%d entries)", length)
 
-    def slack_for_github_user(self, user: str) -> Optional[str]:
+    def slack_for_github_user(self, github_id: str) -> Optional[str]:
         """Return the Slack user ID for a GitHub user, if any.
 
         Parameters
         ----------
-        user : `str`
+        github_id : `str`
+            A GitHub username (not case-sensitive).
 
         Returns
         -------
@@ -146,7 +149,7 @@ class SlackGitHubMapper(object):
             their profile.
         """
         with self._lock:
-            return self._github_to_slack.get(user.lower())
+            return self._github_to_slack.get(github_id.lower())
 
     async def _get_profile_field_id(self, name: str) -> str:
         """Get the Slack field ID for a custom profile field."""
@@ -169,7 +172,7 @@ class SlackGitHubMapper(object):
         We can't use the built-in pagination support of SlackResponse because
         it isn't async-aware, so do the equivalent manually.
         """
-        users: List[str] = []
+        slack_ids: List[str] = []
         batch = 1
         logging.info("Listing Slack users (batch %d)", batch)
         response = await self.slack.users_list(limit=1000)
@@ -180,24 +183,24 @@ class SlackGitHubMapper(object):
                 if user.get("is_bot", False) or user.get("is_app_user", False):
                     logging.info("Skipping bot or app user %s", user["id"])
                 else:
-                    users.append(user["id"])
+                    slack_ids.append(user["id"])
             cursor = response.get("response_metadata", {}).get("next_cursor")
             if not cursor:
                 break
             batch += 1
             logging.info("Listing Slack users (batch %d)", batch)
             response = await self.slack.users_list(cursor=cursor, limit=1000)
-        logging.info("Found %d Slack users", len(users))
-        return users
+        logging.info("Found %d Slack users", len(slack_ids))
+        return slack_ids
 
     async def _get_user_github(
-        self, user: str, semaphore: asyncio.Semaphore
+        self, slack_id: str, semaphore: asyncio.Semaphore
     ) -> Optional[str]:
-        """Get the GitHub user from a given user's profile.
+        """Get the GitHub user from a given Slack ID's profile.
 
         Parameters
         ----------
-        user : `str`
+        slack_id : `str`
             Slack user ID for which to get the corresponding GitHub user.
         semaphore : `asyncio.Semaphore`
             Semaphore controlling Slack API calls, used to avoid overruning
@@ -206,37 +209,41 @@ class SlackGitHubMapper(object):
 
         Returns
         -------
-        github : `str` or `None`
+        github_id : `str` or `None`
             The corresponding GitHub user if there is one, or None.  All user
             IDs are forced to lowercase since GitHub is case-insensitive.
         """
         async with semaphore:
-            response = await self._get_user_profile(user)
+            response = await self._get_user_profile(slack_id)
         profile = response["profile"]
         if not profile:
             return None
 
         try:
             display_name = profile.get("display_name_normalized", "")
-            github = profile["fields"][self._profile_field_id]["value"].lower()
+            github_id = profile["fields"][self._profile_field_id]["value"]
+            github_id = github_id.lower()
         except (KeyError, TypeError):
             logging.info(
                 "No GitHub user found for Slack user %s (%s)",
-                user,
+                slack_id,
                 display_name,
             )
             return None
 
         logging.info(
-            "Slack user %s (%s) -> GitHub user %s", user, display_name, github
+            "Slack user %s (%s) -> GitHub user %s",
+            slack_id,
+            display_name,
+            github_id,
         )
-        return github
+        return github_id
 
-    async def _get_user_profile(self, user: str) -> SlackResponse:
+    async def _get_user_profile(self, slack_id: str) -> SlackResponse:
         """Get a user profile, handling retrying for rate limiting."""
         while True:
             try:
-                response = await self.slack.users_profile_get(user=user)
+                response = await self.slack.users_profile_get(user=slack_id)
             except SlackApiError as e:
                 if e.response["error"] == "ratelimited":
                     await self._random_delay("Rate-limited")
