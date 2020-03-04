@@ -64,13 +64,13 @@ async def create_app(slack: Optional[WebClient] = None) -> Application:
     sub_app = Application()
     setup_middleware(sub_app)
     sub_app.add_routes(init_external_routes())
-    root_app.add_subapp(f'/{root_app["safir/config"].name}', sub_app)
+    root_app.add_subapp(f"/{config.name}", sub_app)
 
     # The basic auth middleware requires the full URL, so attach it to the
     # root app, even though all the protected URLs are in the sub app.
     root_app.middlewares.append(
         basic_auth_middleware(
-            ("/checkerboard/slack", "/checkerboard/github"),
+            (f"/{config.name}/slack", f"/{config.name}/github"),
             {config.username: config.password},
         )
     )
