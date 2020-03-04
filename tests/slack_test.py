@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from typing import TYPE_CHECKING
+from unittest.mock import patch
 
 import pytest
 
 from checkerboard.slack import SlackGitHubMapper, UnknownFieldError
-from tests.util import MockSlackClient
+from tests.util import MockSlackClient, MockSlackClientWithFailures
 
 if TYPE_CHECKING:
     from typing import Any, Dict, List
@@ -174,3 +176,29 @@ async def test_invalid_profile_field() -> None:
         mapper = SlackGitHubMapper(slack, "GitHub Username")
         with pytest.raises(UnknownFieldError):
             await mapper.refresh()
+
+
+async def test_backoff() -> None:
+    """Test backoff and retry on errors and rate limiting."""
+    slack = MockSlackClientWithFailures()
+    slack.add_user("U1", "githubuser")
+    slack.add_user("U2", "otheruser")
+
+    # Patch out the sleep to reduce waiting, and confirm that we slept for a
+    # random number of seconds between 2 and 5 twice, since we should have
+    # gotten two retriable failures from MockSlackClientWithFailures.
+    #
+    # AsyncMock was introduced in Python 3.8, so sadly we can't use it yet.
+    mapper = SlackGitHubMapper(slack, "GitHub Username")
+    with patch("asyncio.sleep") as sleep:
+        sleep.return_value = asyncio.Future()
+        sleep.return_value.set_result(None)
+        await mapper.refresh()
+        assert sleep.call_count == 2
+        for call in sleep.call_args_list:
+            assert call[0][0] >= 2
+            assert call[0][0] <= 5
+
+    # Check that all the data was received and recorded properly.
+    assert await mapper.github_for_slack_user("U1") == "githubuser"
+    assert await mapper.github_for_slack_user("U2") == "otheruser"
