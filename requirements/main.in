@@ -8,5 +8,6 @@
 aiohttp
 aiodns
 chardet
+aiohttp-basicauth-middleware
 safir
 slackclient[optional]

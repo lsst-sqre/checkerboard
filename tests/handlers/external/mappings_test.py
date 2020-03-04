@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from aiohttp import BasicAuth
 from tests.util import MockSlackClient
 
 from checkerboard.app import create_app
+from checkerboard.config import Configuration
 
 if TYPE_CHECKING:
     from aiohttp.pytest_plugin.test_utils import TestClient
@@ -18,6 +20,11 @@ async def test_get_slack_mappings(aiohttp_client: TestClient) -> None:
     client = await aiohttp_client(app)
 
     response = await client.get("/checkerboard/slack")
+    assert response.status == 401
+
+    config = Configuration()
+    auth = BasicAuth(config.username, config.password)
+    response = await client.get("/checkerboard/slack", auth=auth)
     assert response.status == 200
     data = await response.json()
     assert data == {"U1": "githubuser"}
@@ -29,20 +36,28 @@ async def test_get_user_mapping_by_slack(aiohttp_client: TestClient) -> None:
     client = await aiohttp_client(app)
 
     response = await client.get("/checkerboard/slack/U1")
+    assert response.status == 401
+
+    response = await client.get("/checkerboard/slack/githubuser")
+    assert response.status == 401
+
+    config = Configuration()
+    auth = BasicAuth(config.username, config.password)
+    response = await client.get("/checkerboard/slack/U1", auth=auth)
     assert response.status == 200
     data = await response.json()
     assert data == {"U1": "githubuser"}
 
-    response = await client.get("/checkerboard/slack/U2")
+    response = await client.get("/checkerboard/slack/U2", auth=auth)
     assert response.status == 404
 
-    response = await client.get("/checkerboard/slack/testuser")
+    response = await client.get("/checkerboard/slack/testuser", auth=auth)
     assert response.status == 404
 
-    response = await client.get("/checkerboard/slack/githubuser")
+    response = await client.get("/checkerboard/slack/githubuser", auth=auth)
     assert response.status == 404
 
-    response = await client.get("/checkerboard/slack/")
+    response = await client.get("/checkerboard/slack/", auth=auth)
     assert response.status == 404
 
 
@@ -52,15 +67,23 @@ async def test_get_user_mapping_by_github(aiohttp_client: TestClient) -> None:
     client = await aiohttp_client(app)
 
     response = await client.get("/checkerboard/github/githubuser")
+    assert response.status == 401
+
+    response = await client.get("/checkerboard/github/U2")
+    assert response.status == 401
+
+    config = Configuration()
+    auth = BasicAuth(config.username, config.password)
+    response = await client.get("/checkerboard/github/githubuser", auth=auth)
     assert response.status == 200
     data = await response.json()
     assert data == {"U1": "githubuser"}
 
-    response = await client.get("/checkerboard/github/U2")
+    response = await client.get("/checkerboard/github/U2", auth=auth)
     assert response.status == 404
 
-    response = await client.get("/checkerboard/github/testuser")
+    response = await client.get("/checkerboard/github/testuser", auth=auth)
     assert response.status == 404
 
-    response = await client.get("/checkerboard/github/")
+    response = await client.get("/checkerboard/github/", auth=auth)
     assert response.status == 404

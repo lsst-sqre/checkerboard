@@ -7,6 +7,7 @@ import time
 from typing import TYPE_CHECKING
 
 from aiohttp.web import Application
+from aiohttp_basicauth_middleware import basic_auth_middleware
 from safir.logging import configure_logging
 from safir.metadata import setup_metadata
 from safir.middleware import bind_logger
@@ -36,7 +37,7 @@ async def create_app(slack: Optional[WebClient] = None) -> Application:
     slack : `WebClient`, optional
         The Slack WebClient to use.  If not provided, one will be created
         based on the application configuration.  This is a parameter primarily
-        to allow for dependency injection for the test suite.
+        to allow for dependency injection by the test suite.
     """
     config = Configuration()
     configure_logging(
@@ -64,6 +65,15 @@ async def create_app(slack: Optional[WebClient] = None) -> Application:
     setup_middleware(sub_app)
     sub_app.add_routes(init_external_routes())
     root_app.add_subapp(f'/{root_app["safir/config"].name}', sub_app)
+
+    # The basic auth middleware requires the full URL, so attach it to the
+    # root app, even though all the protected URLs are in the sub app.
+    root_app.middlewares.append(
+        basic_auth_middleware(
+            ("/checkerboard/slack", "/checkerboard/github"),
+            {config.username: config.password},
+        )
+    )
 
     return root_app
 
