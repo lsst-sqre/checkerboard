@@ -84,18 +84,18 @@ async def test_mapper() -> None:
     await mapper.refresh()
 
     # Check that the resulting mapping is correct for valid users.
-    assert mapper.github_for_slack_user("U1") == "githubuser"
-    assert mapper.github_for_slack_user("U2") == "otheruser"
-    assert mapper.github_for_slack_user("UNA") == "no-app"
-    assert mapper.github_for_slack_user("UNB") == "no-bot"
-    assert mapper.github_for_slack_user("UNN") == "no-name"
+    assert await mapper.github_for_slack_user("U1") == "githubuser"
+    assert await mapper.github_for_slack_user("U2") == "otheruser"
+    assert await mapper.github_for_slack_user("UNA") == "no-app"
+    assert await mapper.github_for_slack_user("UNB") == "no-bot"
+    assert await mapper.github_for_slack_user("UNN") == "no-name"
 
     # Check the inverse mappings and case insensitivity.
-    assert mapper.slack_for_github_user("GITHUBUSER") == "U1"
-    assert mapper.slack_for_github_user("otheruser") == "U2"
-    assert mapper.slack_for_github_user("NO-app") == "UNA"
-    assert mapper.slack_for_github_user("no-bot") == "UNB"
-    assert mapper.slack_for_github_user("no-name") == "UNN"
+    assert await mapper.slack_for_github_user("GITHUBUSER") == "U1"
+    assert await mapper.slack_for_github_user("otheruser") == "U2"
+    assert await mapper.slack_for_github_user("NO-app") == "UNA"
+    assert await mapper.slack_for_github_user("no-bot") == "UNB"
+    assert await mapper.slack_for_github_user("no-name") == "UNN"
 
     # Check that all the other users don't exist.
     for user in (
@@ -113,11 +113,12 @@ async def test_mapper() -> None:
         "UX3",
         "UX4",
     ):
-        assert not mapper.github_for_slack_user(user)
-        assert not mapper.slack_for_github_user(user)
+        assert not await mapper.github_for_slack_user(user)
+        assert not await mapper.slack_for_github_user(user)
 
     # Check that the full mapping returns the correct list.
-    assert json.loads(mapper.json()) == {
+    full_map_json = await mapper.json()
+    assert json.loads(full_map_json) == {
         "U1": "githubuser",
         "U2": "otheruser",
         "UNA": "no-app",

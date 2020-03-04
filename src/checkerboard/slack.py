@@ -6,7 +6,6 @@ import asyncio
 import json
 import logging
 from random import SystemRandom
-from threading import Lock
 from typing import TYPE_CHECKING
 
 from aiohttp import ClientConnectionError
@@ -62,9 +61,9 @@ class SlackGitHubMapper(object):
         self._profile_field_id: Optional[str] = None
         self._slack_to_github: Dict[str, str] = {}
         self._github_to_slack: Dict[str, str] = {}
-        self._lock = Lock()
+        self._lock = asyncio.Lock()
 
-    def github_for_slack_user(self, slack_id: str) -> Optional[str]:
+    async def github_for_slack_user(self, slack_id: str) -> Optional[str]:
         """Return the GitHub user for a Slack user ID, if any.
 
         Parameters
@@ -79,10 +78,10 @@ class SlackGitHubMapper(object):
             that Slack user does not exist or does not have a GitHub user set
             in their profile.
         """
-        with self._lock:
+        async with self._lock:
             return self._slack_to_github.get(slack_id)
 
-    def json(self) -> str:
+    async def json(self) -> str:
         """Return the map of Slack users to GitHub users as JSON.
 
         Returns
@@ -92,7 +91,7 @@ class SlackGitHubMapper(object):
             GitHub usernames are coerced to lowercase since GitHub is
             case-insensitive.
         """
-        with self._lock:
+        async with self._lock:
             result = json.dumps(self._slack_to_github)
         return result
 
@@ -126,14 +125,14 @@ class SlackGitHubMapper(object):
         github_to_slack = {g: u for u, g in slack_to_github.items()}
 
         # Replace the cached data.
-        with self._lock:
+        async with self._lock:
             self._slack_to_github = slack_to_github
             self._github_to_slack = github_to_slack
 
         length = len(slack_to_github)
         logging.info("Refreshed GitHub map from Slack (%d entries)", length)
 
-    def slack_for_github_user(self, github_id: str) -> Optional[str]:
+    async def slack_for_github_user(self, github_id: str) -> Optional[str]:
         """Return the Slack user ID for a GitHub user, if any.
 
         Parameters
@@ -148,7 +147,7 @@ class SlackGitHubMapper(object):
             name), or None if no Slack users have that GitHub user set in
             their profile.
         """
-        with self._lock:
+        async with self._lock:
             return self._github_to_slack.get(github_id.lower())
 
     async def _get_profile_field_id(self, name: str) -> str:

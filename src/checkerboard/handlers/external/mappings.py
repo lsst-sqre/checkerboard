@@ -19,7 +19,8 @@ async def get_slack_mappings(request: web.Request) -> web.Response:
     known Slack users with a GitHub user configured.
     """
     mapper = request.config_dict["checkerboard/mapper"]
-    return web.Response(text=mapper.json(), content_type="application/json")
+    result = await mapper.json()
+    return web.Response(text=result, content_type="application/json")
 
 
 @routes.get("/slack/{slack_id}")
@@ -32,7 +33,7 @@ async def get_user_mapping_by_slack(request: web.Request) -> web.Response:
     """
     mapper = request.config_dict["checkerboard/mapper"]
     slack_id = request.match_info["slack_id"]
-    github_id = mapper.github_for_slack_user(slack_id)
+    github_id = await mapper.github_for_slack_user(slack_id)
     if github_id:
         return web.json_response({slack_id: github_id})
     else:
@@ -50,7 +51,7 @@ async def get_user_mapping_by_github(request: web.Request) -> web.Response:
     """
     mapper = request.config_dict["checkerboard/mapper"]
     github_id = request.match_info["github_id"]
-    slack_id = mapper.slack_for_github_user(github_id)
+    slack_id = await mapper.slack_for_github_user(github_id)
     if slack_id:
         return web.json_response({slack_id: github_id})
     else:
