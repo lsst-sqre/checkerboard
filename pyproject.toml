@@ -93,6 +93,6 @@ exclude = '''
 [tool.isort]
 include_trailing_comma = true
 multi_line_output = 3
-known_first_party = "checkerboard"
-known_third_party = ["aiohttp", "aiohttp_basicauth_middleware", "click", "safir", "setuptools", "slack", "tests"]
+known_first_party = ["checkerboard", "tests"]
+known_third_party = ["aiohttp", "aiohttp_basicauth_middleware", "click", "safir", "setuptools", "slack"]
 skip = ["docs/conf.py"]

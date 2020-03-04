@@ -5,10 +5,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from aiohttp import BasicAuth
-from tests.util import MockSlackClient
 
 from checkerboard.app import create_app
 from checkerboard.config import Configuration
+from tests.util import MockSlackClient
 
 if TYPE_CHECKING:
     from aiohttp.pytest_plugin.test_utils import TestClient

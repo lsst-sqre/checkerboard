@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tests.util import MockSlackClient
-
 from checkerboard.app import create_app
+from tests.util import MockSlackClient
 
 if TYPE_CHECKING:
     from aiohttp.pytest_plugin.test_utils import TestClient
