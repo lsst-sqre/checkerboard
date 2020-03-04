@@ -1,6 +1,20 @@
-#!/usr/bin/env python
-"""SQuaRE Checkerboard microservice (api.lsst.codes-compliant).
-"""
-from .server import server, standalone
+"""The Checkerboard service."""
 
-__all__ = ["server", "standalone"]
+__all__ = ["__version__"]
+
+import sys
+
+if sys.version_info < (3, 8):
+    from importlib_metadata import version, PackageNotFoundError
+else:
+    from importlib.metadata import version, PackageNotFoundError
+
+
+__version__: str
+"""The application version string (PEP 440 / SemVer compatible)."""
+
+try:
+    __version__ = version(__name__)
+except PackageNotFoundError:
+    # package is not installed
+    __version__ = "0.0.0"

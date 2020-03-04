@@ -53,14 +53,11 @@ WORKDIR /home/appuser
 # Make sure we use the virtualenv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Copy over the uwsgi configuration file.
-COPY uwsgi.ini .
-
 COPY --from=install-image /opt/venv /opt/venv
 
 # Switch to non-root user
 USER appuser
 
-EXPOSE 5000
+EXPOSE 8080
 
-ENTRYPOINT ["uwsgi", "-T", "uwsgi.ini"]
+ENTRYPOINT ["checkerboard", "run", "--port", "8080"]

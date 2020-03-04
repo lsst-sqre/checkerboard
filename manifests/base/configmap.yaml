@@ -3,7 +3,6 @@ kind: ConfigMap
 metadata:
   name: checkerboard
 data:
-  LOGLEVEL: "INFO"
   SAFIR_NAME: "checkerboard"
   SAFIR_PROFILE: "production"
   SAFIR_LOGGER: "checkerboard"

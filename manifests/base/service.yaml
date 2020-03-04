@@ -8,7 +8,7 @@ spec:
   ports:
     - name: checkerboard-http
       protocol: TCP
-      port: 5000
+      port: 8080
       targetPort: app
   selector:
     name: checkerboard

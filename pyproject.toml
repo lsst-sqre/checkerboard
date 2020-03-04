@@ -94,5 +94,5 @@ exclude = '''
 include_trailing_comma = true
 multi_line_output = 3
 known_first_party = "checkerboard"
-known_third_party = ["aiohttp", "apikit", "flask", "requests_futures", "setuptools", "slack"]
+known_third_party = ["aiohttp", "click", "safir", "setuptools", "slack", "tests"]
 skip = ["docs/conf.py"]
