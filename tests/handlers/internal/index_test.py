@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 async def test_get_index(aiohttp_client: TestClient) -> None:
     """Test GET /"""
     slack = MockSlackClient()
-    app = await create_app(slack)
+    app = await create_app(slack=slack)
     client = await aiohttp_client(app)
 
     response = await client.get("/")

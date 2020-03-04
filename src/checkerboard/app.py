@@ -24,7 +24,11 @@ if TYPE_CHECKING:
     from typing import AsyncIterator, Optional
 
 
-async def create_app(slack: Optional[WebClient] = None) -> Application:
+async def create_app(
+    *,
+    config: Optional[Configuration] = None,
+    slack: Optional[WebClient] = None,
+) -> Application:
     """Create and configure the Checkerboard application.
 
     On startup, Checkerboard will rebuild its mapping of Slack users to GitHub
@@ -34,12 +38,17 @@ async def create_app(slack: Optional[WebClient] = None) -> Application:
 
     Parameters
     ----------
+    config : `Configuration`, optional
+        The configuration to use.  If not provided, the default Configuration
+        will be used.  This is a parameter primarily to allow for dependency
+        injection by the test suite.
     slack : `WebClient`, optional
         The Slack WebClient to use.  If not provided, one will be created
         based on the application configuration.  This is a parameter primarily
         to allow for dependency injection by the test suite.
     """
-    config = Configuration()
+    if not config:
+        config = Configuration()
     configure_logging(
         profile=config.profile,
         log_level=config.log_level,

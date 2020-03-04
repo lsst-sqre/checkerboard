@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 async def test_get_index(aiohttp_client: TestClient) -> None:
     """Test GET /app-name/"""
     slack = MockSlackClient()
-    app = await create_app(slack)
+    app = await create_app(slack=slack)
     name = app["safir/config"].name
     client = await aiohttp_client(app)
 

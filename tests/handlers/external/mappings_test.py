@@ -19,7 +19,7 @@ async def test_get_slack_mappings(aiohttp_client: TestClient) -> None:
     slack.add_user("U1", "githubuser")
     slack.add_user("U2", "otheruser")
 
-    app = await create_app(slack)
+    app = await create_app(slack=slack)
     client = await aiohttp_client(app)
 
     response = await client.get("/checkerboard/slack")
@@ -37,7 +37,7 @@ async def test_get_user_mapping_by_slack(aiohttp_client: TestClient) -> None:
     slack = MockSlackClient()
     slack.add_user("U1", "githubuser")
 
-    app = await create_app(slack)
+    app = await create_app(slack=slack)
     client = await aiohttp_client(app)
 
     response = await client.get("/checkerboard/slack/U1")
@@ -70,7 +70,7 @@ async def test_get_user_mapping_by_github(aiohttp_client: TestClient) -> None:
     slack = MockSlackClient()
     slack.add_user("U1", "githubuser")
 
-    app = await create_app(slack)
+    app = await create_app(slack=slack)
     client = await aiohttp_client(app)
 
     response = await client.get("/checkerboard/github/githubuser")
