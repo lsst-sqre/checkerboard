@@ -23,8 +23,11 @@ class MockUser(object):
 
 
 class MockSlackClient(Mock):
-    def __init__(self) -> None:
+    def __init__(
+        self, *, team_profile: Optional[Dict[str, Any]] = None
+    ) -> None:
         super().__init__(spec=WebClient)
+        self.team_profile = team_profile
         self._users: Dict[str, MockUser] = {}
         self._raw_users: List[Dict[str, Any]] = []
         self._raw_user_profiles: Dict[str, Dict[str, Any]] = {}
@@ -79,9 +82,14 @@ class MockSlackClient(Mock):
         self._raw_user_profiles[name] = profile_data
 
     async def team_profile_get(self) -> SlackResponse:
-        data = {
-            "profile": {"fields": [{"label": "GitHub Username", "id": "2"}]}
-        }
+        if self.team_profile is not None:
+            data = self.team_profile
+        else:
+            data = {
+                "profile": {
+                    "fields": [{"label": "GitHub Username", "id": "2"}]
+                }
+            }
         return self._build_slack_response(data)
 
     async def users_list(

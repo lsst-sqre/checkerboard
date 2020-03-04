@@ -3,12 +3,19 @@
 from __future__ import annotations
 
 import json
+from typing import TYPE_CHECKING
 
-from checkerboard.slack import SlackGitHubMapper
+import pytest
+
+from checkerboard.slack import SlackGitHubMapper, UnknownFieldError
 from tests.util import MockSlackClient
+
+if TYPE_CHECKING:
+    from typing import Any, Dict, List
 
 
 async def test_mapper() -> None:
+    """Tests of the mapper, primarily around data parsing and robustness."""
     slack = MockSlackClient()
     mapper = SlackGitHubMapper(slack, "GitHub Username")
 
@@ -125,3 +132,45 @@ async def test_mapper() -> None:
         "UNB": "no-bot",
         "UNN": "no-name",
     }
+
+
+async def test_invalid_profile_field() -> None:
+    """Test handling of invalid or missing custom profile fields."""
+    slack = MockSlackClient()
+    mapper = SlackGitHubMapper(slack, "Other Field")
+    with pytest.raises(UnknownFieldError):
+        await mapper.refresh()
+
+    # Test with multiple team profile custom fields, including the one we care
+    # about.
+    team_profile = {
+        "profile": {
+            "fields": [
+                {"label": "Something Else", "id": "1"},
+                {"label": "GitHub Username", "id": "2"},
+                {"label": "Other Thing", "id": "3"},
+            ]
+        }
+    }
+    slack = MockSlackClient(team_profile=team_profile)
+    slack.add_user("U1", "githubuser")
+    mapper = SlackGitHubMapper(slack, "GitHub Username")
+    await mapper.refresh()
+    assert await mapper.github_for_slack_user("U1") == "githubuser"
+
+    # Try a variety of invalid team profile data structures or ones where the
+    # field we care about is missing.
+    test_profiles: List[Dict[str, Any]] = [
+        {},
+        {"foo": "bar"},
+        {"profile": {}},
+        {"profile": {"fields": []}},
+        {"profile": {"fields": [{}]}},
+        {"profile": {"fields": [{"label": "GitHub Username"}]}},
+        {"profile": {"fields": [{"id": "2"}]}},
+    ]
+    for team_profile in test_profiles:
+        slack = MockSlackClient(team_profile=team_profile)
+        mapper = SlackGitHubMapper(slack, "GitHub Username")
+        with pytest.raises(UnknownFieldError):
+            await mapper.refresh()
