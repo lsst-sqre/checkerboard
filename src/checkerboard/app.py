@@ -137,6 +137,7 @@ async def mapper_refresh(mapper: SlackGitHubMapper, interval: int) -> None:
         smaller than the length of time a single refresh takes, Checkerboard
         will refresh continuously.
     """
+    await asyncio.sleep(interval)
     while True:
         start = time.time()
         await mapper.refresh()
