@@ -175,7 +175,9 @@ class SlackGitHubMapper(object):
         response = await self.slack.users_list(limit=1000)
         while True:
             for user in response["members"]:
-                if user["is_bot"] or user["is_app_user"]:
+                if "id" not in user:
+                    continue
+                if user.get("is_bot", False) or user.get("is_app_user", False):
                     logging.info("Skipping bot or app user %s", user["id"])
                 else:
                     users.append(user["id"])
@@ -215,7 +217,7 @@ class SlackGitHubMapper(object):
             return None
 
         try:
-            display_name = profile["display_name_normalized"]
+            display_name = profile.get("display_name_normalized", "")
             github = profile["fields"][self._profile_field_id]["value"].lower()
         except (KeyError, TypeError):
             logging.info(

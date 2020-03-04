@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import copy
+from dataclasses import dataclass
+from random import SystemRandom
 from typing import TYPE_CHECKING
 from unittest.mock import Mock
 
@@ -10,12 +12,71 @@ from slack import WebClient
 from slack.web.slack_response import SlackResponse
 
 if TYPE_CHECKING:
-    from typing import Any, Dict, Optional
+    from typing import Any, Dict, List, Optional
+
+
+@dataclass
+class MockUser(object):
+    github: Optional[str]
+    is_bot: bool
+    is_app_user: bool
 
 
 class MockSlackClient(Mock):
     def __init__(self) -> None:
         super().__init__(spec=WebClient)
+        self._users: Dict[str, MockUser] = {}
+        self._raw_users: List[Dict[str, Any]] = []
+        self._raw_user_profiles: Dict[str, Dict[str, Any]] = {}
+        self._pending: List[Dict[str, Dict[str, Any]]] = []
+
+    def add_user(
+        self,
+        user: str,
+        github: Optional[str],
+        is_bot: bool = False,
+        is_app_user: bool = False,
+    ) -> None:
+        """Add a user with a GitHub mapping.
+
+        Parameters
+        ----------
+        user : `str`
+            The Slack user ID.
+        github : `str` or `None`
+            The GitHub user or None to add a user without a mapping.
+        is_bot : `bool`, optional
+            Set to true to add a bot user.
+        is_app_user : `bool`, optional
+            Set to true to add an app user.
+        """
+        self._users[user] = MockUser(
+            github=github, is_bot=is_bot, is_app_user=is_app_user
+        )
+
+    def add_raw_user(
+        self,
+        name: str,
+        list_data: Dict[str, Any],
+        profile_data: Dict[str, Any],
+    ) -> None:
+        """Add raw list and profile information for a user.
+
+        Used to simulate errors, ignored users, and other cases where the test
+        needs full control over what is included.
+
+        Parameters
+        ----------
+        name : `str`
+            The Slack user ID of the user.
+        list_data : `Dict` [`str`, `Any`]
+            Data returned for tha user from the ``users.list`` Slack endpoint.
+        profile_data : `Dict` [`str`, `Any`]
+            Data returned for the user from the ``users.profile.get`` Slack
+            endpoint.
+        """
+        self._raw_users.append(list_data)
+        self._raw_user_profiles[name] = profile_data
 
     async def team_profile_get(self) -> SlackResponse:
         data = {
@@ -26,22 +87,63 @@ class MockSlackClient(Mock):
     async def users_list(
         self, *, limit: int, cursor: Optional[str] = None
     ) -> SlackResponse:
-        assert not cursor
         assert limit
-        data = {
-            "members": [{"id": "U1", "is_app_user": False, "is_bot": False}]
-        }
+        members = self._build_user_list()
+
+        # Regardless of what limit is, return only the first five elements
+        # without a cursor and everything else with the (right) cursor.
+        if cursor:
+            assert cursor == "some-cursor"
+            assert self._pending
+            data = {
+                "members": self._pending,
+                "response_metadata": {"next_cursor": ""},
+            }
+            self._pending = []
+        else:
+            assert not self._pending
+            data = {"members": members[:5]}
+            if len(members) > 5:
+                data["response_metadata"] = {"next_cursor": "some-cursor"}
+                self._pending = members[5:]
+            else:
+                data["response_metadata"] = {"next_cursor": ""}
+
         return self._build_slack_response(data)
 
     async def users_profile_get(self, *, user: str) -> SlackResponse:
-        assert user == "U1"
-        data = {
-            "profile": {
-                "display_name_normalized": "testuser",
-                "fields": {"2": {"value": "githubuser"}},
-            }
-        }
+        assert user in self._users or user in self._raw_user_profiles
+
+        if user in self._users:
+            profile: Dict[str, Any] = {"display_name_normalized": "user"}
+            if self._users[user].github:
+                profile["fields"] = {"2": {"value": self._users[user].github}}
+            data = {"profile": profile}
+        else:
+            data = {"profile": self._raw_user_profiles[user]}
+
         return self._build_slack_response(data)
+
+    def _build_user_list(self) -> List[Dict[str, Any]]:
+        """Build the full members element of the users.list endpoint.
+
+        This randomizes the order in which the users are listed to flush out
+        any assumptions about list ordering.
+        """
+        members: List[Dict[str, Any]] = []
+
+        for user, mock_user in self._users.items():
+            members.append(
+                {
+                    "id": user,
+                    "is_app_user": mock_user.is_app_user,
+                    "is_bot": mock_user.is_bot,
+                }
+            )
+        members.extend(self._raw_users)
+
+        SystemRandom().shuffle(members)
+        return members
 
     def _build_slack_response(self, data: Dict[str, Any]) -> SlackResponse:
         """Build a fake SlackResponse containing the given data."""

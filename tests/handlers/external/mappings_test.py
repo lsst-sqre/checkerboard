@@ -16,6 +16,9 @@ if TYPE_CHECKING:
 
 async def test_get_slack_mappings(aiohttp_client: TestClient) -> None:
     slack = MockSlackClient()
+    slack.add_user("U1", "githubuser")
+    slack.add_user("U2", "otheruser")
+
     app = await create_app(slack)
     client = await aiohttp_client(app)
 
@@ -27,11 +30,13 @@ async def test_get_slack_mappings(aiohttp_client: TestClient) -> None:
     response = await client.get("/checkerboard/slack", auth=auth)
     assert response.status == 200
     data = await response.json()
-    assert data == {"U1": "githubuser"}
+    assert data == {"U1": "githubuser", "U2": "otheruser"}
 
 
 async def test_get_user_mapping_by_slack(aiohttp_client: TestClient) -> None:
     slack = MockSlackClient()
+    slack.add_user("U1", "githubuser")
+
     app = await create_app(slack)
     client = await aiohttp_client(app)
 
@@ -63,6 +68,8 @@ async def test_get_user_mapping_by_slack(aiohttp_client: TestClient) -> None:
 
 async def test_get_user_mapping_by_github(aiohttp_client: TestClient) -> None:
     slack = MockSlackClient()
+    slack.add_user("U1", "githubuser")
+
     app = await create_app(slack)
     client = await aiohttp_client(app)
 
