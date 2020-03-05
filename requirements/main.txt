@@ -67,6 +67,10 @@ chardet==3.0.4 \
     --hash=sha256:84ab92ed1c4d4f16916e05906b6b75a6c0fb5db821cc65e70cbd64a3e2a5eaae \
     --hash=sha256:fc323ffcaeaed0e0a02bf4d117757b98aed530d9ed4531e3e15460124c106691 \
     # via -r requirements/main.in, aiohttp
+click==7.0 \
+    --hash=sha256:2335065e6395b9e67ca716de5f7526736bfa6ceead690adf616d925bdc622b13 \
+    --hash=sha256:5b94b49521f6456670fdb30cd82a4eca9412788a93fa6dd6df72c94d5a8ff2d7 \
+    # via -r requirements/main.in
 http-basic-auth==1.2.0 \
     --hash=sha256:ed81a9869dee608478e6477f6f3485b3b04e5378a8685a9b9170f0a7a9e90d96 \
     # via aiohttp-basicauth-middleware
@@ -128,8 +132,9 @@ pycares==3.1.1 \
     --hash=sha256:fa78e919f3bd7d6d075db262aa41079b4c02da315c6043c6f43881e2ebcdd623 \
     --hash=sha256:fadb97d2e02dabdc15a0091591a972a938850d79ddde23d385d813c1731983f0 \
     # via aiodns
-pycparser==2.19 \
-    --hash=sha256:a988718abfad80b6b157acce7bf130a30876d27603738ac39f140993246b25b3 \
+pycparser==2.20 \
+    --hash=sha256:2d475327684562c3a96cc71adf7dc8c4f0565175cf86b6d7a404ff4c771f15f0 \
+    --hash=sha256:7582ad22678f0fcd81102833f60ef8d0e57288b6b5fb00323d101be910e35705 \
     # via cffi
 safir==0.1.0 \
     --hash=sha256:208f4342d901457111db6b194de6aabe5565d03c1b927f7d1edba8097caf9e27 \
