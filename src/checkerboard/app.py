@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 from typing import TYPE_CHECKING
 
@@ -54,6 +55,11 @@ async def create_app(
         log_level=config.log_level,
         name=config.logger_name,
     )
+
+    # The SlackGitHubMapper currently uses the root logger because Safir
+    # doesn't (yet) expose a logger that isn't tied to a request.  Configure
+    # it to the same log level as the Safir logger.
+    logging.basicConfig(level=config.log_level.upper())
 
     # Create the Slack to GitHub mapper and retrieve the initial mapping
     # before creating the application.  This ensures that it will not respond
