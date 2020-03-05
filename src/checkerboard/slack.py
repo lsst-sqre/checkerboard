@@ -118,6 +118,7 @@ class SlackGitHubMapper(object):
         github_awaits = [
             self._get_user_github(u, semaphore) for u in slack_ids
         ]
+        logging.info("Checking profiles of %d Slack users", len(slack_ids))
         github_ids = await asyncio.gather(*github_awaits)
         for slack_id, github_id in zip(slack_ids, github_ids):
             if github_id:
@@ -223,14 +224,14 @@ class SlackGitHubMapper(object):
             github_id = profile["fields"][self._profile_field_id]["value"]
             github_id = github_id.lower()
         except (KeyError, TypeError):
-            logging.info(
+            logging.debug(
                 "No GitHub user found for Slack user %s (%s)",
                 slack_id,
                 display_name,
             )
             return None
 
-        logging.info(
+        logging.debug(
             "Slack user %s (%s) -> GitHub user %s",
             slack_id,
             display_name,
