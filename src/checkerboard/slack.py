@@ -42,6 +42,9 @@ class SlackGitHubMapper(object):
     profile_field_name : `str`
         The name of the custom Slack profile field that contains the GitHub
         username.
+    logger : `logging.Logger`, optional
+        Logger to use for status messages.  Defaults to the logger for
+        __name__.
     slack_concurrency : `int`, optional
         The number of concurrent requests to make to the Slack API.  Setting
         this too high will cause Slack to rate-limit profile queries, which
@@ -53,11 +56,13 @@ class SlackGitHubMapper(object):
         slack: WebClient,
         profile_field_name: str,
         *,
+        logger: logging.Logger = None,
         slack_concurrency: int = 1,
     ) -> None:
         self.slack = slack
         self.profile_field_name = profile_field_name
         self.slack_concurrency = slack_concurrency
+        self.logger = logger or logging.getLogger(__name__)
         self._profile_field_id: Optional[str] = None
         self._slack_to_github: Dict[str, str] = {}
         self._github_to_slack: Dict[str, str] = {}
@@ -118,7 +123,7 @@ class SlackGitHubMapper(object):
         github_awaits = [
             self._get_user_github(u, semaphore) for u in slack_ids
         ]
-        logging.info("Checking profiles of %d Slack users", len(slack_ids))
+        self.logger.info("Checking profiles of %d Slack users", len(slack_ids))
         github_ids = await asyncio.gather(*github_awaits)
         for slack_id, github_id in zip(slack_ids, github_ids):
             if github_id:
@@ -131,7 +136,9 @@ class SlackGitHubMapper(object):
             self._github_to_slack = github_to_slack
 
         length = len(slack_to_github)
-        logging.info("Refreshed GitHub map from Slack (%d entries)", length)
+        self.logger.info(
+            "Refreshed GitHub map from Slack (%d entries)", length
+        )
 
     async def slack_for_github_user(self, github_id: str) -> Optional[str]:
         """Return the Slack user ID for a GitHub user, if any.
@@ -153,12 +160,12 @@ class SlackGitHubMapper(object):
 
     async def _get_profile_field_id(self, name: str) -> str:
         """Get the Slack field ID for a custom profile field."""
-        logging.info("Getting field ID for %s profile field", name)
+        self.logger.info("Getting field ID for %s profile field", name)
         response = await self.slack.team_profile_get()
         for custom_field in response.get("profile", {}).get("fields", []):
             if custom_field.get("label") == name and "id" in custom_field:
                 field_id = custom_field["id"]
-                logging.info("Field ID for %s is %s", name, field_id)
+                self.logger.info("Field ID for %s is %s", name, field_id)
                 return field_id
 
         # The custom profile field we were expecting is not defined.
@@ -174,23 +181,23 @@ class SlackGitHubMapper(object):
         """
         slack_ids: List[str] = []
         batch = 1
-        logging.info("Listing Slack users (batch %d)", batch)
+        self.logger.info("Listing Slack users (batch %d)", batch)
         response = await self.slack.users_list(limit=1000)
         while True:
             for user in response["members"]:
                 if "id" not in user:
                     continue
                 if user.get("is_bot", False) or user.get("is_app_user", False):
-                    logging.info("Skipping bot or app user %s", user["id"])
+                    self.logger.info("Skipping bot or app user %s", user["id"])
                 else:
                     slack_ids.append(user["id"])
             cursor = response.get("response_metadata", {}).get("next_cursor")
             if not cursor:
                 break
             batch += 1
-            logging.info("Listing Slack users (batch %d)", batch)
+            self.logger.info("Listing Slack users (batch %d)", batch)
             response = await self.slack.users_list(cursor=cursor, limit=1000)
-        logging.info("Found %d Slack users", len(slack_ids))
+        self.logger.info("Found %d Slack users", len(slack_ids))
         return slack_ids
 
     async def _get_user_github(
@@ -224,14 +231,14 @@ class SlackGitHubMapper(object):
             github_id = profile["fields"][self._profile_field_id]["value"]
             github_id = github_id.lower()
         except (KeyError, TypeError):
-            logging.debug(
+            self.logger.debug(
                 "No GitHub user found for Slack user %s (%s)",
                 slack_id,
                 display_name,
             )
             return None
 
-        logging.debug(
+        self.logger.debug(
             "Slack user %s (%s) -> GitHub user %s",
             slack_id,
             display_name,
@@ -255,9 +262,8 @@ class SlackGitHubMapper(object):
             else:
                 return response
 
-    @staticmethod
-    async def _random_delay(reason: str) -> None:
+    async def _random_delay(self, reason: str) -> None:
         """Delay for a random period between 2 and 5 seconds."""
         delay = SystemRandom().randrange(2, 5)
-        logging.warning("%s, sleeping for %d seconds", reason, delay)
+        self.logger.warning("%s, sleeping for %d seconds", reason, delay)
         await asyncio.sleep(delay)
