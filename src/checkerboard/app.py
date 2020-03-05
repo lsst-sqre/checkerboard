@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 import time
 from typing import TYPE_CHECKING
 
@@ -13,6 +12,7 @@ from safir.logging import configure_logging
 from safir.metadata import setup_metadata
 from safir.middleware import bind_logger
 from slack import WebClient
+from structlog import get_logger
 
 from checkerboard.config import Configuration
 from checkerboard.handlers import init_external_routes, init_internal_routes
@@ -55,11 +55,6 @@ async def create_app(
         log_level=config.log_level,
         name=config.logger_name,
     )
-
-    # The SlackGitHubMapper currently uses the root logger because Safir
-    # doesn't (yet) expose a logger that isn't tied to a request.  Configure
-    # it to the same log level as the Safir logger.
-    logging.basicConfig(level=config.log_level.upper())
 
     # Create the Slack to GitHub mapper and retrieve the initial mapping
     # before creating the application.  This ensures that it will not respond
@@ -106,7 +101,8 @@ async def create_mapper(
     config : `Configuration`
         The Checkerboard application configuration.
     """
-    mapper = SlackGitHubMapper(slack, config.profile_field)
+    logger = get_logger(config.logger_name)
+    mapper = SlackGitHubMapper(slack, config.profile_field, logger=logger)
     await mapper.refresh()
 
     return mapper

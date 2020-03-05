@@ -12,3 +12,4 @@ aiohttp-basicauth-middleware
 click
 safir
 slackclient[optional]
+structlog
