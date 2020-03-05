@@ -2,6 +2,20 @@
 Change log
 ##########
 
+0.3.0 (2020-03-04)
+==================
+
+With this release, Checkerboard has been rewritten as an `aiohttp <https://docs.aiohttp.org/en/stable/>`__ application based on the `Safir <https://safir.lsst.io>`__ framework.
+The configuration and routes have all changed in this release.
+
+- ``/checkerboard`` now returns only application metadata.
+  For a list of all mappings, use ``/checkerboard/slack``.
+- Routes no longer support appending trailing slashes.
+- The application now requires only one Slack token, which is set using the ``CHECKERBOARD_SLACK_TOKEN`` environment variable.
+- Change the environment variable ``CHECKERBOARD_USER`` to ``CHECKERBOARD_USERNAME`` and ``CHECKERBOARD_PW`` to ``CHECKERBOARD_PASSWORD``.
+- The expected structure of the Kubernetes secret has changed.
+  See ``manifests/secret.template.yaml`` for the new structure.
+
 0.2.0 (2020-02-19)
 ==================
 

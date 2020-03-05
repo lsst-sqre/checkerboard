@@ -8,39 +8,35 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: checkerboard
+      name: checkerboard
   template:
     metadata:
       labels:
-        app: checkerboard
+        name: checkerboard
     spec:
       containers:
         - name: checkerboard
-          image: lsstsqre/checkerboard:0.2.0
-          imagePullPolicy: Always
+          imagePullPolicy: "Always"
+          image: "lsstsqre/checkerboard"
           ports:
-            - containerPort: 5000
-              name: checkerboard
+            - containerPort: 8080
+              name: app
+          envFrom:
+            - configMapRef:
+                name: checkerboard
           env:
-            - name: LOGLEVEL
-              value: INFO
-            - name: CHECKERBOARD_USER
+            - name: CHECKERBOARD_USERNAME
               valueFrom:
                 secretKeyRef:
                   name: checkerboard
-                  key: checkerboard.user
-            - name: CHECKERBOARD_PW
+                  key: username
+            - name: CHECKERBOARD_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: checkerboard
-                  key: checkerboard.pw
-            - name: SLACK_APP_TOKEN
+                  key: password
+            - name: CHECKERBOARD_SLACK_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: checkerboard
-                  key: slack.app.token
-            - name: SLACK_BOT_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: checkerboard
-                  key: slack.bot.token
+                  key: slack_token
