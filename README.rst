@@ -25,6 +25,17 @@ The following environment variables must be set in Checkerboard's runtime enviro
 * ``CHECKERBOARD_PASSWORD``: The HTTP Basic Authentication password expected
 * ``CHECKERBOARD_SLACK_TOKEN``: Slack bot token with ``users:read`` and ``users.profile:read`` scopes
 
+The following environment variables may optionally be set to change default behavior.
+
+- ``SAFIR_PROFILE``: Set to ``production`` to enable production logging
+- ``SAFIR_LOG_LEVEL``: Set to ``DEBUG``, ``INFO``, ``WARNING``, or ``ERROR`` to change the log level.
+  The default is ``INFO``.
+- ``CHECKERBOARD_PROFILE_FIELD``: The name of the custom field in Slack from which to obtain the GitHub username.
+  The default is ``GitHub Username``.
+- ``CHECKERBOARD_REFRESH_INTERVAL``: How frequently (in seconds) to refresh the Slack <-> GitHub mapping.
+  This takes about 10 minutes for 2,000 users, so do not lower this too much.
+  The default is 3600 (one hour).
+
 Routes
 ------
 
@@ -59,11 +70,11 @@ So, for example, one can wrap this deployment in a Kustomization resource such a
    kind: Kustomization
 
    resources:
-     - github.com/lsst-sqre/checkerboard.git//manifests/base?ref=0.2.0
+     - github.com/lsst-sqre/checkerboard.git//manifests/base?ref=0.3.0
      - resources/secret.yaml
 
 where ``resources/secret.yaml`` provides the required Kubernetes ``Secret`` resource via some local mechanism.
-This will install version 0.2.0 of the Checkerboard application.
+This will install version 0.3.0 of the Checkerboard application.
 
 Naming
 ======
