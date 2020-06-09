@@ -1,4 +1,11 @@
-"""Mappers for Slack users."""
+"""Mappers for Slack users.
+
+Notes
+-----
+Calls into the Slack client have to be marked with ``# type: ignore``
+currently because the typing of those calls cannot handle the optionality of
+the async/await interface.
+"""
 
 from __future__ import annotations
 
@@ -161,7 +168,7 @@ class SlackGitHubMapper(object):
     async def _get_profile_field_id(self, name: str) -> str:
         """Get the Slack field ID for a custom profile field."""
         self.logger.info("Getting field ID for %s profile field", name)
-        response = await self.slack.team_profile_get()
+        response = await self.slack.team_profile_get()  # type: ignore
         for custom_field in response.get("profile", {}).get("fields", []):
             if custom_field.get("label") == name and "id" in custom_field:
                 field_id = custom_field["id"]
@@ -182,7 +189,7 @@ class SlackGitHubMapper(object):
         slack_ids: List[str] = []
         batch = 1
         self.logger.info("Listing Slack users (batch %d)", batch)
-        response = await self.slack.users_list(limit=1000)
+        response = await self.slack.users_list(limit=1000)  # type: ignore
         while True:
             for user in response["members"]:
                 if "id" not in user:
@@ -196,7 +203,9 @@ class SlackGitHubMapper(object):
                 break
             batch += 1
             self.logger.info("Listing Slack users (batch %d)", batch)
-            response = await self.slack.users_list(cursor=cursor, limit=1000)
+            response = await self.slack.users_list(  # type: ignore
+                cursor=cursor, limit=1000
+            )
         self.logger.info("Found %d Slack users", len(slack_ids))
         return slack_ids
 
@@ -250,7 +259,9 @@ class SlackGitHubMapper(object):
         """Get a user profile, handling retrying for rate limiting."""
         while True:
             try:
-                response = await self.slack.users_profile_get(user=slack_id)
+                response = await self.slack.users_profile_get(  # type: ignore
+                    user=slack_id
+                )
             except SlackApiError as e:
                 if e.response["error"] == "ratelimited":
                     await self._random_delay("Rate-limited")
