@@ -198,3 +198,5 @@ class MockSlackClientWithFailures(MockSlackClient):
             raise SlackApiError("test exception", response)
         elif step == 3:
             return await super().users_profile_get(user=user)
+        else:
+            raise NotImplementedError("invalid step number")
