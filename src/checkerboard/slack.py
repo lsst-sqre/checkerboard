@@ -19,9 +19,10 @@ from aiohttp import ClientConnectionError
 from slack.errors import SlackApiError
 
 if TYPE_CHECKING:
+    from typing import Dict, List, Optional
+
     from slack import WebClient
     from slack.web.slack_response import SlackResponse
-    from typing import Dict, List, Optional
 
 __all__ = ["SlackGitHubMapper", "UnknownFieldError"]
 
