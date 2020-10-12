@@ -148,9 +148,9 @@ six==1.15.0 \
     --hash=sha256:30639c035cdb23534cd4aa2dd52c3bf48f06e5f4a941509c8bafd8ce11080259 \
     --hash=sha256:8b74bedcbbbaca38ff6d7491d76f2b06b3592611af620f8426e82dddb04a5ced \
     # via structlog
-slackclient[optional]==2.9.1 \
-    --hash=sha256:214edd4a494cc74353c8084ec184ff97a116d4b12cde287f805a9af948ef39ae \
-    --hash=sha256:3a3e84fd4f13d9715740c13ce6c3c25b970147aeeeec22ef137d796124dfcf08 \
+slackclient[optional]==2.9.2 \
+    --hash=sha256:07ec0340753987154f60820e0b9f98e111a5b18a4b17cfd5f352a6f649e9163a \
+    --hash=sha256:cc36bbf804a658caaccdf81333d2951c43c21f13deca8a6f4c00505b727c572e \
     # via -r requirements/main.in
 structlog==20.1.0 \
     --hash=sha256:7a48375db6274ed1d0ae6123c486472aa1d0890b08d314d2b016f3aa7f35990b \
