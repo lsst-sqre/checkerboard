@@ -2,6 +2,8 @@
 Checkerboard
 ############
 
+|Build|
+
 Checkerboard maps user identities between systems with their own concepts of identity.
 Currently, only mapping between Slack users and GitHub users is supported.
 Slack users are associated with GitHub users via a custom field in the Slack profile.
@@ -81,3 +83,8 @@ Naming
 
 Checkerboard is a (very simple) federated identity service used by the SQuaRE tem at the Rubin Observatory.
 A checkerboard is a federation of squares.
+
+.. |Build| image:: https://github.com/lsst-sqre/checkerboard/workflows/CI/badge.svg
+   :alt: GitHub Actions
+   :scale: 100%
+   :target: https://github.com/lsst-sqre/checkerboard/actions
