@@ -24,7 +24,7 @@ apt-get update
 apt-get -y upgrade
 
 # git is required by setuptools-scm.
-apt-get -y install --no-install-recommends git
+apt-get -y install --no-install-recommends git build-essential
 
 # Delete cached files we don't need anymore:
 apt-get clean
