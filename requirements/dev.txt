@@ -142,13 +142,13 @@ flake8==3.8.4 \
     --hash=sha256:749dbbd6bfd0cf1318af27bf97a14e28e5ff548ef8e5b1566ccfb25a11e7c839 \
     --hash=sha256:aadae8761ec651813c24be05c6f7b4680857ef6afaae4651a4eccaef97ce6c3b
     # via -r requirements/dev.in
-identify==1.5.11 \
-    --hash=sha256:7aef7a5104d6254c162990e54a203cdc0fd202046b6c415bd5d636472f6565c4 \
-    --hash=sha256:b2c71bf9f5c482c389cef816f3a15f1c9d7429ad70f497d4a2e522442d80c6de
+identify==1.5.12 \
+    --hash=sha256:18994e850ba50c37bcaed4832be8b354d6a06c8fb31f54e0e7ece76d32f69bc8 \
+    --hash=sha256:892473bf12e655884132a3a32aca737a3cbefaa34a850ff52d501773a45837bc
     # via pre-commit
-idna==3.0 \
-    --hash=sha256:320229aadbdfc597bc28876748cc0c9d04d476e0fe6caacaaddea146365d9f63 \
-    --hash=sha256:c9a26e10e5558412384fac891eefb41957831d31be55f1e2c98ed97a70abb969
+idna==3.1 \
+    --hash=sha256:5205d03e7bcbb919cc9c19885f9920d622ca52448306f2377daede5cf3faac16 \
+    --hash=sha256:c5b02147e01ea9920e6b0a3f1f7bb833612d507592c837a6c49552768f4054e1
     # via yarl
 iniconfig==1.1.1 \
     --hash=sha256:011e24c64b7f47f6ebd835bb12a743f2fbe9a26d4cecaa7f53bc4f35ee9da8b3 \
@@ -330,9 +330,9 @@ typing-extensions==3.7.4.3 \
     # via
     #   aiohttp
     #   mypy
-virtualenv==20.2.2 \
-    --hash=sha256:54b05fc737ea9c9ee9f8340f579e5da5b09fb64fd010ab5757eb90268616907c \
-    --hash=sha256:b7a8ec323ee02fb2312f098b6b4c9de99559b462775bc8fe3627a73706603c1b
+virtualenv==20.3.0 \
+    --hash=sha256:205a7577275dd0d9223c730dd498e21a8910600085c3dee97412b041fc4b853b \
+    --hash=sha256:7992b8de87e544a4ab55afc2240bf8388c4e3b5765d03784dad384bfdf9097ee
     # via pre-commit
 watchgod==0.6 \
     --hash=sha256:59700dab7445aa8e6067a5b94f37bae90fc367554549b1ed2e9d0f4f38a90d2a \
