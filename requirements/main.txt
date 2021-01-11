@@ -115,9 +115,9 @@ click==7.1.2 \
 http-basic-auth==1.2.0 \
     --hash=sha256:ed81a9869dee608478e6477f6f3485b3b04e5378a8685a9b9170f0a7a9e90d96
     # via aiohttp-basicauth-middleware
-idna==3.0 \
-    --hash=sha256:320229aadbdfc597bc28876748cc0c9d04d476e0fe6caacaaddea146365d9f63 \
-    --hash=sha256:c9a26e10e5558412384fac891eefb41957831d31be55f1e2c98ed97a70abb969
+idna==3.1 \
+    --hash=sha256:5205d03e7bcbb919cc9c19885f9920d622ca52448306f2377daede5cf3faac16 \
+    --hash=sha256:c5b02147e01ea9920e6b0a3f1f7bb833612d507592c837a6c49552768f4054e1
     # via yarl
 multidict==5.1.0 \
     --hash=sha256:018132dbd8688c7a69ad89c4a3f39ea2f9f33302ebe567a879da8f4ca73f0d0a \
