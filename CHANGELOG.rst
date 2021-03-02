@@ -2,7 +2,7 @@
 Change log
 ##########
 
-0.3.1 (unreleased)
+0.3.1 (2021-03-01)
 ==================
 
 This release drops support for Python 3.7 and 3.8.
