@@ -14,6 +14,7 @@ spec:
       labels:
         name: checkerboard
     spec:
+      automountServiceAccountToken: false
       containers:
         - name: checkerboard
           imagePullPolicy: "Always"
@@ -40,3 +41,13 @@ spec:
                 secretKeyRef:
                   name: checkerboard
                   key: slack_token
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - all
+            readOnlyRootFilesystem: true
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
