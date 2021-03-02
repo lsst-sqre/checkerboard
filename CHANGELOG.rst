@@ -5,10 +5,10 @@ Change log
 0.3.1 (unreleased)
 ==================
 
-This release drops support for Python 3.7.
-Python 3.8 or later is now required.
+This release drops support for Python 3.7 and 3.8.
+Python 3.9 or later is now required.
 
-- Require Python 3.8 and drop Python 3.7 support.
+- Require Python 3.9 and drop Python 3.7 and 3.8 support.
 - Honor logging configuration when logging Slack mapper actions.
 - Update all dependencies.
 
