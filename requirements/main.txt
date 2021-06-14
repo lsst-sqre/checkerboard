@@ -212,9 +212,9 @@ pycparser==2.20 \
     --hash=sha256:2d475327684562c3a96cc71adf7dc8c4f0565175cf86b6d7a404ff4c771f15f0 \
     --hash=sha256:7582ad22678f0fcd81102833f60ef8d0e57288b6b5fb00323d101be910e35705
     # via cffi
-safir==0.1.1 \
-    --hash=sha256:6de9adb068a5f32b2c436179685ac6a956450cce2dca80cc40d2ecd988ade879 \
-    --hash=sha256:8a38991e0d334f3eaafc8d0ba6d79dc34ead94585997d0cbaf24e0ef5a07aac3
+safir==0.2.0 \
+    --hash=sha256:240c16ccc43c7a1cb0ee7fcbb94de44a9675d9bf5aef7509cb09c1e49e9d386b \
+    --hash=sha256:fb6c27f1defb13428dde17b7b304d7672955a4b77ae4de9a5ab5f08f3e09e3cc
     # via -r requirements/main.in
 slackclient[optional]==2.9.3 \
     --hash=sha256:07ec8fa76f6aa64852210ae235ff9e637ba78124e06c0b07a7eeea4abb955965 \
