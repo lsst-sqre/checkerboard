@@ -377,9 +377,9 @@ structlog==21.4.0 \
     # via
     #   -r requirements/main.in
     #   safir
-typing-extensions==4.0.0 \
-    --hash=sha256:2cdf80e4e04866a9b3689a51869016d36db0814d84b8d8a568d22781d45d27ed \
-    --hash=sha256:829704698b22e13ec9eaf959122315eabb370b0884400e9818334d8b677023d9
+typing-extensions==4.0.1 \
+    --hash=sha256:4ca091dea149f945ec56afb48dae714f21e8692ef22a395223bcd328961b6a0e \
+    --hash=sha256:7f001e5ac290a0c0401508864c7ec868be4e701886d5b573a9528ed3973d9d3b
     # via async-timeout
 wheel==0.37.0 \
     --hash=sha256:21014b2bd93c6d0034b6ba5d35e4eb284340e09d63c59aef6fc14b0f346146fd \

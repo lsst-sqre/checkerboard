@@ -13,6 +13,9 @@
 # details.
 set -euo pipefail
 
+# Display each command as it's run.
+set -x
+
 # Tell apt-get we're never going to be able to give manual
 # feedback:
 export DEBIAN_FRONTEND=noninteractive
@@ -23,8 +26,8 @@ apt-get update
 # Install security updates:
 apt-get -y upgrade
 
-# git is required by setuptools-scm.
-apt-get -y install --no-install-recommends git build-essential
+# Example of installing a new package, without unnecessary packages:
+apt-get -y install --no-install-recommends git
 
 # Delete cached files we don't need anymore:
 apt-get clean

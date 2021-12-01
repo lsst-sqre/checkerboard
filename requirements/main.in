@@ -5,10 +5,10 @@
 # After editing, update requirements/main.txt by running:
 #     make update-deps
 
-aiohttp
 aiodns
-chardet
+aiohttp
 aiohttp-basicauth-middleware
+chardet
 click
 safir<2
 slackclient[optional]
