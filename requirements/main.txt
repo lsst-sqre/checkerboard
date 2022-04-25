@@ -341,9 +341,9 @@ safir==1.0.0 \
     --hash=sha256:43df32e3bd076a5a59e5e69d138e3220304881908669ea3ce4da9a22bf0b9df3 \
     --hash=sha256:6086fc32c4a95a294ef4fc5520e9bf566585d88e638029509040d2d7a2d4bbb8
     # via -r requirements/main.in
-slackclient[optional]==2.9.3 \
-    --hash=sha256:07ec8fa76f6aa64852210ae235ff9e637ba78124e06c0b07a7eeea4abb955965 \
-    --hash=sha256:2d68d668c02f4038299897e5c4723ab85dd40a3548354924b24f333a435856f8
+slackclient[optional]==2.9.4 \
+    --hash=sha256:a8cab9146795e23d66a03473b80dd23df8c500829dfa9d06b3e3d5aec0a2b293 \
+    --hash=sha256:ab79fefb5412d0595bc01d2f195a787597f2a617b6766562932ab9ffbe5cb173
     # via -r requirements/main.in
 structlog==21.5.0 \
     --hash=sha256:68c4c29c003714fe86834f347cb107452847ba52414390a7ee583472bde00fc9 \
