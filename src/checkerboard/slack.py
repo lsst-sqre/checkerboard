@@ -64,7 +64,7 @@ class SlackGitHubMapper(object):
         slack: WebClient,
         profile_field_name: str,
         *,
-        logger: logging.Logger = None,
+        logger: Optional[logging.Logger] = None,
         slack_concurrency: int = 1,
     ) -> None:
         self.slack = slack
