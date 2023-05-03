@@ -13,3 +13,4 @@ mypy
 pre-commit
 pytest
 pytest-aiohttp
+pytest-asyncio

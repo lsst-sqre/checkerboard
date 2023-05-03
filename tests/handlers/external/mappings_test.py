@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
 from aiohttp import BasicAuth
 
 from checkerboard.app import create_app
@@ -14,6 +15,7 @@ if TYPE_CHECKING:
     from aiohttp.pytest_plugin.test_utils import TestClient
 
 
+@pytest.mark.asyncio
 async def test_authentication(aiohttp_client: TestClient) -> None:
     config = Configuration()
     config.username = "test"
@@ -43,6 +45,7 @@ async def test_authentication(aiohttp_client: TestClient) -> None:
         assert response.status == 200
 
 
+@pytest.mark.asyncio
 async def test_get_slack_mappings(aiohttp_client: TestClient) -> None:
     config = Configuration()
     auth = BasicAuth(config.username, config.password)
@@ -59,6 +62,7 @@ async def test_get_slack_mappings(aiohttp_client: TestClient) -> None:
     assert data == {"U1": "githubuser", "U2": "otheruser"}
 
 
+@pytest.mark.asyncio
 async def test_get_user_mapping_by_slack(aiohttp_client: TestClient) -> None:
     config = Configuration()
     auth = BasicAuth(config.username, config.password)
@@ -86,6 +90,7 @@ async def test_get_user_mapping_by_slack(aiohttp_client: TestClient) -> None:
     assert response.status == 404
 
 
+@pytest.mark.asyncio
 async def test_get_user_mapping_by_github(aiohttp_client: TestClient) -> None:
     config = Configuration()
     auth = BasicAuth(config.username, config.password)
