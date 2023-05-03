@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from checkerboard.app import create_app
 from tests.util import MockSlackClient
 
@@ -11,6 +13,7 @@ if TYPE_CHECKING:
     from aiohttp.pytest_plugin.test_utils import TestClient
 
 
+@pytest.mark.asyncio
 async def test_get_index(aiohttp_client: TestClient) -> None:
     """Test GET /app-name/"""
     slack = MockSlackClient()

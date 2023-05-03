@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from typing import Any, Dict, List
 
 
+@pytest.mark.asyncio
 async def test_mapper() -> None:
     """Tests of the mapper, primarily around data parsing and robustness."""
     slack = MockSlackClient()
@@ -136,6 +137,7 @@ async def test_mapper() -> None:
     }
 
 
+@pytest.mark.asyncio
 async def test_invalid_profile_field() -> None:
     """Test handling of invalid or missing custom profile fields."""
     slack = MockSlackClient()
@@ -178,6 +180,7 @@ async def test_invalid_profile_field() -> None:
             await mapper.refresh()
 
 
+@pytest.mark.asyncio
 async def test_backoff() -> None:
     """Test backoff and retry on errors and rate limiting."""
     slack = MockSlackClientWithFailures()

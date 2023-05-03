@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING
 
+import pytest
 from aiohttp import BasicAuth
 
 from checkerboard.app import create_app
@@ -15,6 +16,7 @@ if TYPE_CHECKING:
     from aiohttp.pytest_plugin.test_utils import TestClient
 
 
+@pytest.mark.asyncio
 async def test_refresh_interval(aiohttp_client: TestClient) -> None:
     """Test spawning of a background refresh thread.
 
