@@ -17,7 +17,6 @@ def main() -> None:
 
     Administrative command-line interface for checkerboard.
     """
-    pass
 
 
 @main.command()

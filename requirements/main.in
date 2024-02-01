@@ -5,11 +5,18 @@
 # After editing, update requirements/main.txt by running:
 #     make update-deps
 
+# FastAPI and friends
+fastapi
+uvicorn[standard]
+
 aiodns
+
+# Remove aiohttp once FastAPI migration complete
 aiohttp
 aiohttp-basicauth-middleware
 chardet
 click
-safir<2
+pydantic
+safir
 slackclient[optional]
 structlog

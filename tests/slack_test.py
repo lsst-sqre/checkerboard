@@ -13,7 +13,7 @@ from checkerboard.slack import SlackGitHubMapper, UnknownFieldError
 from tests.util import MockSlackClient, MockSlackClientWithFailures
 
 if TYPE_CHECKING:
-    from typing import Any, Dict, List
+    from typing import Any
 
 
 @pytest.mark.asyncio
@@ -164,7 +164,7 @@ async def test_invalid_profile_field() -> None:
 
     # Try a variety of invalid team profile data structures or ones where the
     # field we care about is missing.
-    test_profiles: List[Dict[str, Any]] = [
+    test_profiles: list[dict[str, Any]] = [
         {},
         {"foo": "bar"},
         {"profile": {}},

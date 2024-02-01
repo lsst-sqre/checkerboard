@@ -19,7 +19,7 @@ from aiohttp import ClientConnectionError
 from slack.errors import SlackApiError
 
 if TYPE_CHECKING:
-    from typing import Dict, List, Optional
+    from typing import Optional
 
     from slack import WebClient
     from slack.web.slack_response import SlackResponse
@@ -31,7 +31,7 @@ class UnknownFieldError(Exception):
     """The expected Slack profile field is not defined."""
 
 
-class SlackGitHubMapper(object):
+class SlackGitHubMapper:
     """Bidirectional map of Slack users to GitHub users.
 
     This class loads all Slack users from the native Slack workspace of the
@@ -72,8 +72,8 @@ class SlackGitHubMapper(object):
         self.slack_concurrency = slack_concurrency
         self.logger = logger or logging.getLogger(__name__)
         self._profile_field_id: Optional[str] = None
-        self._slack_to_github: Dict[str, str] = {}
-        self._github_to_slack: Dict[str, str] = {}
+        self._slack_to_github: dict[str, str] = {}
+        self._github_to_slack: dict[str, str] = {}
         self._lock = asyncio.Lock()
 
     async def github_for_slack_user(self, slack_id: str) -> Optional[str]:
@@ -125,7 +125,7 @@ class SlackGitHubMapper(object):
 
         # Get the list of users and then their profile data, enforcing a
         # concurrency limit on the profile fetches.
-        slack_to_github: Dict[str, str] = {}
+        slack_to_github: dict[str, str] = {}
         slack_ids = await self._get_user_list()
         semaphore = asyncio.Semaphore(self.slack_concurrency)
         github_awaits = [
@@ -133,7 +133,7 @@ class SlackGitHubMapper(object):
         ]
         self.logger.info("Checking profiles of %d Slack users", len(slack_ids))
         github_ids = await asyncio.gather(*github_awaits)
-        for slack_id, github_id in zip(slack_ids, github_ids):
+        for slack_id, github_id in zip(slack_ids, github_ids, strict=False):
             if github_id:
                 slack_to_github[slack_id] = github_id
         github_to_slack = {g: u for u, g in slack_to_github.items()}
@@ -179,7 +179,7 @@ class SlackGitHubMapper(object):
         # The custom profile field we were expecting is not defined.
         raise UnknownFieldError(f"Slack custom profile field {name} not found")
 
-    async def _get_user_list(self) -> List[str]:
+    async def _get_user_list(self) -> list[str]:
         """Return a list of Slack user IDs.
 
         Notes
@@ -187,7 +187,7 @@ class SlackGitHubMapper(object):
         We can't use the built-in pagination support of SlackResponse because
         it isn't async-aware, so do the equivalent manually.
         """
-        slack_ids: List[str] = []
+        slack_ids: list[str] = []
         batch = 1
         self.logger.info("Listing Slack users (batch %d)", batch)
         response = await self.slack.users_list(limit=1000)  # type: ignore

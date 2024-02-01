@@ -14,11 +14,11 @@ from slack.errors import SlackApiError
 from slack.web.slack_response import SlackResponse
 
 if TYPE_CHECKING:
-    from typing import Any, Dict, List, Optional
+    from typing import Any, Optional
 
 
 @dataclass
-class MockUser(object):
+class MockUser:
     github: Optional[str]
     is_bot: bool
     is_app_user: bool
@@ -26,14 +26,14 @@ class MockUser(object):
 
 class MockSlackClient(Mock):
     def __init__(
-        self, *, team_profile: Optional[Dict[str, Any]] = None
+        self, *, team_profile: Optional[dict[str, Any]] = None
     ) -> None:
         super().__init__(spec=WebClient)
         self.team_profile = team_profile
-        self._users: Dict[str, MockUser] = {}
-        self._raw_users: List[Dict[str, Any]] = []
-        self._raw_user_profiles: Dict[str, Dict[str, Any]] = {}
-        self._pending: List[Dict[str, Dict[str, Any]]] = []
+        self._users: dict[str, MockUser] = {}
+        self._raw_users: list[dict[str, Any]] = []
+        self._raw_user_profiles: dict[str, dict[str, Any]] = {}
+        self._pending: list[dict[str, dict[str, Any]]] = []
 
     def add_user(
         self,
@@ -62,8 +62,8 @@ class MockSlackClient(Mock):
     def add_raw_user(
         self,
         name: str,
-        list_data: Dict[str, Any],
-        profile_data: Dict[str, Any],
+        list_data: dict[str, Any],
+        profile_data: dict[str, Any],
     ) -> None:
         """Add raw list and profile information for a user.
 
@@ -83,7 +83,7 @@ class MockSlackClient(Mock):
         self._raw_users.append(list_data)
         self._raw_user_profiles[name] = profile_data
 
-    def build_slack_response(self, data: Dict[str, Any]) -> SlackResponse:
+    def build_slack_response(self, data: dict[str, Any]) -> SlackResponse:
         """Build a fake SlackResponse containing the given data."""
         response_data = copy.deepcopy(data)
         if "ok" not in response_data:
@@ -140,7 +140,7 @@ class MockSlackClient(Mock):
         assert user in self._users or user in self._raw_user_profiles
 
         if user in self._users:
-            profile: Dict[str, Any] = {"display_name_normalized": "user"}
+            profile: dict[str, Any] = {"display_name_normalized": "user"}
             if self._users[user].github:
                 profile["fields"] = {"2": {"value": self._users[user].github}}
             data = {"profile": profile}
@@ -149,13 +149,13 @@ class MockSlackClient(Mock):
 
         return self.build_slack_response(data)
 
-    def _build_user_list(self) -> List[Dict[str, Any]]:
+    def _build_user_list(self) -> list[dict[str, Any]]:
         """Build the full members element of the users.list endpoint.
 
         This randomizes the order in which the users are listed to flush out
         any assumptions about list ordering.
         """
-        members: List[Dict[str, Any]] = []
+        members: list[dict[str, Any]] = []
 
         for user, mock_user in self._users.items():
             members.append(

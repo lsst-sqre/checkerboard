@@ -7,6 +7,7 @@
 
 -c main.txt
 
+# Remove aiohttp-devtools when FastAPI migration complete
 aiohttp-devtools
 coverage[toml]
 mypy
@@ -14,3 +15,8 @@ pre-commit
 pytest
 pytest-aiohttp
 pytest-asyncio
+pytest-cov
+
+# Documentation
+autodoc_pydantic
+scriv[toml]

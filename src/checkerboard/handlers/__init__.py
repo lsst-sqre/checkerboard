@@ -1,13 +1,11 @@
 """HTTP API route tables."""
 
-from __future__ import annotations
+from fastapi import APIRouter
 
-from aiohttp import web
-
-__all__ = ["internal_routes", "routes", "init_internal_routes", "init_routes"]
+__all__ = ["internal_routes", "routes"]
 
 
-internal_routes = web.RouteTableDef()
+internal_routes = APIRouter()
 """Routes for the root application that serves from ``/``
 
 Application-specific routes don't get attached here. In practice, only routes
@@ -16,23 +14,5 @@ to ``routes`` instead since those are accessible from the public API gateway
 and are prefixed with the application name.
 """
 
-routes = web.RouteTableDef()
+routes = APIRouter()
 """Routes for the public API that serves from ``/<api_name>/``."""
-
-
-def init_external_routes() -> web.RouteTableDef:
-    """Initialize the route table for the routes served at ``/<api_name>/``."""
-    # Import handlers so that they are registered with the routes table via
-    # decorators. This isn't a global import to avoid circular dependencies.
-    import checkerboard.handlers.external  # noqa: F401
-
-    return routes
-
-
-def init_internal_routes() -> web.RouteTableDef:
-    """Initialize the route table the root APIs (not the public ones)."""
-    # Import handlers so that they are registered with the routes table via
-    # decorators. This isn't a global import to avoid circular dependencies.
-    import checkerboard.handlers.internal  # noqa: F401
-
-    return internal_routes

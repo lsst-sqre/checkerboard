@@ -3,64 +3,96 @@
 __all__ = ["Configuration"]
 
 import os
-from dataclasses import dataclass
+
+from pydantic import Field
+from safir.logging import LogLevel, Profile
+from safir.pydantic import CamelCaseModel
 
 
-@dataclass
-class Configuration:
+class Configuration(CamelCaseModel):
     """Configuration for checkerboard."""
 
-    name = os.getenv("SAFIR_NAME", "checkerboard")
-    """The application's name, which doubles as the root HTTP endpoint path.
+    name: str = Field(
+        os.getenv("SAFIR_NAME", "checkerboard"),
+        title="Application name",
+        description=(
+            "The application's name, which doubles as the root HTTP"
+            " endpoint path.  Set with the ``SAFIR_NAME``"
+            " environment variable."
+        ),
+    )
 
-    Set with the ``SAFIR_NAME`` environment variable.
-    """
+    profile: Profile = Field(
+        Profile(os.getenv("SAFIR_PROFILE", "production")),
+        title="Application run profile",
+        description=(
+            "The application profile: 'development' or 'production'."
+            " Set with the ``SAFIR_PROFILE`` environment variable."
+        ),
+    )
 
-    profile = os.getenv("SAFIR_PROFILE", "development")
-    """Application run profile: "development" or "production".
+    logger_name: str = Field(
+        os.getenv("SAFIR_LOGGER", "checkerboard"),
+        title="Application logger root name",
+        description=(
+            "The root name of the application's logger.  Set with the"
+            " ``SAFIR_LOGGER`` application variable."
+        ),
+    )
 
-    Set with the ``SAFIR_PROFILE`` environment variable.
-    """
+    log_level: LogLevel = Field(
+        LogLevel(os.getenv("SAFIR_LOG_LEVEL", "INFO")),
+        title="Application logger log level",
+        description=(
+            "The log level of the application's logger.  Set with the"
+            " ``SAFIR_LOG_LEVEL`` environment variable."
+        ),
+    )
 
-    logger_name = os.getenv("SAFIR_LOGGER", "checkerboard")
-    """The root name of the application's logger.
+    profile_field: str = Field(
+        os.getenv("CHECKERBOARD_PROFILE_FIELD", "GitHub Username"),
+        title="Slack custom profile field for GitHub username",
+        description=(
+            "Name of the Slack custom profile field containing the"
+            " GitHub username.  Set with the ``CHECKERBOARD_PROFILE_FIELD``"
+            " environment variable."
+        ),
+    )
 
-    Set with the ``SAFIR_LOGGER`` environment variable.
-    """
+    refresh_interval: int = Field(
+        int(os.getenv("CHECKERBOARD_REFRESH_INTERVAL", "3600")),
+        title="Refresh interval for Slack <-> GitHub mapping update",
+        description=(
+            "How frequently (in seconds) to refresh the Slack <-> GitHub"
+            " mapping.  Set with the ``CHECKERBOARD_REFRESH_INTERVAL``"
+            " environment variable."
+        ),
+    )
 
-    log_level = os.getenv("SAFIR_LOG_LEVEL", "INFO")
-    """The log level of the application's logger.
+    slack_token: str = Field(
+        os.getenv("CHECKERBOARD_SLACK_TOKEN", ""),
+        title="Slack token used for queries",
+        description=(
+            "The Slack token to use for queries.  Must be a bot token with"
+            " users:read and users.profile:read scopes.  Set with the"
+            " ``CHECKERBOARD_SLACK_TOKEN`` environment variable."
+        ),
+    )
 
-    Set with the ``SAFIR_LOG_LEVEL`` environment variable.
-    """
+    username: str = Field(
+        os.getenv("CHECKERBOARD_USERNAME", "checkerboard"),
+        title="Username for HTTP Basic Authentication",
+        description=(
+            "Expected username for HTTP Basic Authentication.  Set with the"
+            " ``CHECKERBOARD_USERNAME`` environment variable."
+        ),
+    )
 
-    profile_field = os.getenv("CHECKERBOARD_PROFILE_FIELD", "GitHub Username")
-    """Name of the Slack custom profile field containing the GitHub username.
-
-    Set with the ``CHECKERBOARD_PROFILE_FIELD`` environment variable.
-    """
-
-    refresh_interval = int(os.getenv("CHECKERBOARD_REFRESH_INTERVAL", "3600"))
-    """How frequently (in seconds) to refresh the Slack <-> GitHub mapping.
-
-    Set with the ``CHECKERBOARD_REFRESH_INTERVAL`` environment variable.
-    """
-
-    slack_token = os.getenv("CHECKERBOARD_SLACK_TOKEN", "")
-    """The Slack token to use for queries.
-
-    Must be a bot token with users:read and users.profile:read scopes.  Set
-    with the ``CHECKERBOARD_SLACK_TOKEN`` envirnoment variable.
-    """
-
-    username = os.getenv("CHECKERBOARD_USERNAME", "checkerboard")
-    """Expected username for HTTP Basic Authentication.
-
-    Set with the ``CHECKERBOARD_USERNAME`` environment variable.
-    """
-
-    password = os.getenv("CHECKERBOARD_PASSWORD", "")
-    """Expected password for HTTP Basic Authentication.
-
-    Set with the ``CHECKERBOARD_PASSWORD`` environment variable.
-    """
+    password: str = Field(
+        os.getenv("CHECKERBOARD_PASSWORD", ""),
+        title="Password for HTTP Basic Authentication",
+        description=(
+            "Expected password for HTTP Basic Authentication.  Set with the"
+            " ``CHECKERBOARD_PASSWORD`` environment variable."
+        ),
+    )
