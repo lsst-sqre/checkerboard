@@ -1,42 +1,22 @@
 """Create Checkerboard components."""
 
 import asyncio
+import time
+from collections.abc import AsyncIterator
+from contextlib import aclosing, asynccontextmanager, suppress
 from dataclasses import dataclass
+from typing import Self
 
 from safir.logging import configure_logging
-from slack import WebClient
+from slack import WebClient  # type: ignore[attr-defined]
 from structlog import get_logger
 from structlog.stdlib import BoundLogger
 
+from checkerboard.config import Configuration
 from checkerboard.slack import SlackGitHubMapper
 
 
-async def _mapper_refresh(mapper: SlackGitHubMapper, interval: int) -> None:
-    """Refresh the Slack <-> GitHub identity mapper.
-
-    This runs as an infinite loop and is meant to be spawned as an asyncio
-    Task and cancelled when the application is shut down.
-
-    Parameters
-    ----------
-    mapper : `SlackGitHubMapper`
-        The Slack <-> GitHub identity mapper to refresh.
-    interval : `int`
-        The interval between refreshes in seconds.  This is not the sleep
-        time; it is the time between kicking off new refresh jobs.  If it is
-        smaller than the length of time a single refresh takes, Checkerboard
-        will refresh continuously.
-    """
-    await asyncio.sleep(interval)
-    while True:
-        start = time.time()
-        await mapper.refresh()
-        now = time.time()
-        if start + interval > now:
-            await asyncio.sleep(interval - (now - start))
-
-
-@dataclass(frozen=True, slots=True)
+@dataclass
 class ProcessContext:
     """Per-process application context.
 
@@ -62,7 +42,7 @@ class ProcessContext:
     mapper: SlackGitHubMapper
     """Object holding map between Slack users and GitHub accounts."""
 
-    refresh_task: AsyncIterator[None] | None = None
+    refresh_task: asyncio.Task | None = None
     """Task to periodically refresh user map."""
 
     @classmethod
@@ -92,21 +72,28 @@ class ProcessContext:
         """
         if self.refresh_task is not None:
             self.refresh_task.cancel()
-            try:
+            with suppress(asyncio.CancelledError):
                 await self.refresh_task
-            except asyncio.CancelledError:
-                pass
-            self.refresh_task = None
 
     async def create_mapper_refresh_task(self) -> None:
         """Spawn a background task to refresh the Slack <-> GitHub mapper."""
-        logger = get_logger(self.config.logger_name)
-        if self.mapper is None:
-            logger.warning("No mapper is defined; cannot create refresh task.")
-            return
         self.refresh_task = asyncio.create_task(
-            _mapper_refresh(mapper, config.refresh_interval)
+            self._mapper_periodic_refresh()
         )
+
+    async def _mapper_periodic_refresh(self) -> None:
+        """Refresh the Slack <-> GitHub identity mapper.
+
+        This runs as an infinite loop and is meant to be spawned as an
+        asyncio Task and cancelled when the application is shut down.
+        """
+        interval = self.config.refresh_interval
+        while True:
+            start = time.time()
+            await self.mapper.refresh()
+            now = time.time()
+            if start + interval > now:
+                await asyncio.sleep(interval - (now - start))
 
 
 class Factory:
@@ -151,7 +138,7 @@ class Factory:
             returned object during shutdown.
         """
         context = await ProcessContext.from_config(config, slack)
-        logger = structlog.get_logger("checkerboard")
+        logger = get_logger("checkerboard")
         return cls(context, logger)
 
     @classmethod
@@ -185,6 +172,19 @@ class Factory:
 
     def __init__(self, context: ProcessContext, logger: BoundLogger) -> None:
         self._context = context
+        self._logger = logger
+
+    def set_logger(self, logger: BoundLogger) -> None:
+        """Replace the internal logger.
+
+        Used by the context dependency to update the logger for all
+        newly-created components when it's rebound with additional context.
+
+        Parameters
+        ----------
+        logger
+            New logger.
+        """
         self._logger = logger
 
     async def aclose(self) -> None:

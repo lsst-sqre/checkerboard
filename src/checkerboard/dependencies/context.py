@@ -13,7 +13,7 @@ from fastapi import Depends, HTTPException, Request
 from safir.dependencies.logger import logger_dependency
 from structlog.stdlib import BoundLogger
 
-from ..config import Config
+from ..config import Configuration
 from ..factory import Factory, ProcessContext
 
 __all__ = [
@@ -39,7 +39,7 @@ class RequestContext:
     ip_address: str
     """IP address of client."""
 
-    config: Config
+    config: Configuration
     """Checkerboard's configuration."""
 
     logger: BoundLogger
@@ -70,7 +70,7 @@ class ContextDependency:
     """
 
     def __init__(self) -> None:
-        self._config: Config | None = None
+        self._config: Configuration | None = None
         self._process_context: ProcessContext | None = None
 
     async def __call__(
@@ -96,8 +96,7 @@ class ContextDependency:
             ip_address=ip_address,
             config=self._config,
             logger=logger,
-            session=session,
-            factory=Factory(self._process_context, session, logger),
+            factory=Factory(self._process_context, logger),
         )
 
     @property
@@ -107,7 +106,7 @@ class ContextDependency:
             raise RuntimeError("ContextDependency not initialized")
         return self._process_context
 
-    async def initialize(self, config: Config) -> None:
+    async def initialize(self, config: Configuration) -> None:
         """Initialize the process-wide shared context.
 
         Parameters

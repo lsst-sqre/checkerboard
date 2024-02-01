@@ -6,32 +6,43 @@ __all__ = [
     "get_user_mapping_by_slack",
 ]
 
+from typing import Annotated
 
+from fastapi import Depends
+
+from checkerboard.dependencies.context import (
+    RequestContext,
+    context_dependency,
+)
 from checkerboard.exceptions import UnknownSlackUserError
 from checkerboard.handlers import routes
 
 
 @routes.get("/slack")
-async def get_slack_mappings() -> dict[str, str]:
+async def get_slack_mappings(
+    context: Annotated[RequestContext, Depends(context_dependency)],
+) -> dict[str, str]:
     """GET full map of Slack users to GitHub identities.
 
     Response is a JSON dict mapping Slack user IDs to GitHub users for all
     known Slack users with a GitHub user configured.
     """
-    mapper = request.config_dict["checkerboard/mapper"]
-    return await mapper.json()
+    mapper = context_dependency.process_context.mapper
+    return await mapper.map()
 
 
 @routes.get("/slack/{slack_id}")
-async def get_user_mapping_by_slack(slack_id: str) -> dict[str, str]:
+async def get_user_mapping_by_slack(
+    slack_id: str,
+    context: Annotated[RequestContext, Depends(context_dependency)],
+) -> dict[str, str]:
     """GET map for a single user by Slack ID.
 
     If the given Slack user ID has a GitHub user configured, response is a
     JSON dict with one key, the Slack user ID, whose value is their GitHub
     user.  Otherwise, returns 404.
     """
-    mapper = request.config_dict["checkerboard/mapper"]
-    slack_id = request.match_info["slack_id"]
+    mapper = context_dependency.process_context.mapper
     github_id = await mapper.github_for_slack_user(slack_id)
     if github_id:
         return {slack_id: github_id}
@@ -39,15 +50,17 @@ async def get_user_mapping_by_slack(slack_id: str) -> dict[str, str]:
 
 
 @routes.get("/github/{github_id}")
-async def get_user_mapping_by_github(str: github_id) -> dict[str, str]:
+async def get_user_mapping_by_github(
+    github_id: str,
+    context: Annotated[RequestContext, Depends(context_dependency)],
+) -> dict[str, str]:
     """GET map for a single user by GitHub user.
 
     If the given GitHub user corresponds to a Slack user ID, response is a
     JSON dict with one key, the Slack user ID, whose value is their GitHub
     user.  Otherwise, returns 404.
     """
-    mapper = request.config_dict["checkerboard/mapper"]
-    github_id = request.match_info["github_id"]
+    mapper = context_dependency.process_context.mapper
     slack_id = await mapper.slack_for_github_user(github_id)
     if slack_id:
         return {slack_id: github_id}

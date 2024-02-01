@@ -20,3 +20,6 @@ pytest-cov
 # Documentation
 autodoc_pydantic
 scriv[toml]
+
+# Type hints
+types-pyyaml

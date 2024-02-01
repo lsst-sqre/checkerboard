@@ -21,7 +21,7 @@ from slack.errors import SlackApiError
 if TYPE_CHECKING:
     from typing import Optional
 
-    from slack import WebClient
+    from slack import WebClient  # type: ignore[attr-defined]
     from slack.web.slack_response import SlackResponse
 
 __all__ = ["SlackGitHubMapper", "UnknownFieldError"]
@@ -64,19 +64,19 @@ class SlackGitHubMapper:
         slack: WebClient,
         profile_field_name: str,
         *,
-        logger: Optional[logging.Logger] = None,
+        logger: logging.Logger | None = None,
         slack_concurrency: int = 1,
     ) -> None:
         self.slack = slack
         self.profile_field_name = profile_field_name
         self.slack_concurrency = slack_concurrency
         self.logger = logger or logging.getLogger(__name__)
-        self._profile_field_id: Optional[str] = None
+        self._profile_field_id: str | None = None
         self._slack_to_github: dict[str, str] = {}
         self._github_to_slack: dict[str, str] = {}
         self._lock = asyncio.Lock()
 
-    async def github_for_slack_user(self, slack_id: str) -> Optional[str]:
+    async def github_for_slack_user(self, slack_id: str) -> str | None:
         """Return the GitHub user for a Slack user ID, if any.
 
         Parameters
@@ -94,6 +94,18 @@ class SlackGitHubMapper:
         async with self._lock:
             return self._slack_to_github.get(slack_id)
 
+    async def map(self) -> dict[str, str]:
+        """Return the map of slack users to GitHub users as a dict.
+
+        Returns
+        -------
+        map : `dict[str,str]`
+            Dict of Slack user IDs to GitHub usernames.  All GitHub usernames
+            are coerced to lowercase since Github is case-insensitive.
+        """
+        async with self._lock:
+            return self._slack_to_github
+
     async def json(self) -> str:
         """Return the map of Slack users to GitHub users as JSON.
 
@@ -105,8 +117,7 @@ class SlackGitHubMapper:
             case-insensitive.
         """
         async with self._lock:
-            result = json.dumps(self._slack_to_github)
-        return result
+            return json.dumps(self._slack_to_github)
 
     async def refresh(self) -> None:
         """Refresh the map of Slack users to GitHub users.
@@ -148,7 +159,7 @@ class SlackGitHubMapper:
             "Refreshed GitHub map from Slack (%d entries)", length
         )
 
-    async def slack_for_github_user(self, github_id: str) -> Optional[str]:
+    async def slack_for_github_user(self, github_id: str) -> str | None:
         """Return the Slack user ID for a GitHub user, if any.
 
         Parameters
@@ -169,7 +180,7 @@ class SlackGitHubMapper:
     async def _get_profile_field_id(self, name: str) -> str:
         """Get the Slack field ID for a custom profile field."""
         self.logger.info("Getting field ID for %s profile field", name)
-        response = await self.slack.team_profile_get()  # type: ignore
+        response = await self.slack.team_profile_get()  # type: ignore[misc]
         for custom_field in response.get("profile", {}).get("fields", []):
             if custom_field.get("label") == name and "id" in custom_field:
                 field_id = custom_field["id"]
@@ -190,7 +201,7 @@ class SlackGitHubMapper:
         slack_ids: list[str] = []
         batch = 1
         self.logger.info("Listing Slack users (batch %d)", batch)
-        response = await self.slack.users_list(limit=1000)  # type: ignore
+        response = await self.slack.users_list(limit=1000)  # type: ignore[misc]
         while True:
             for user in response["members"]:
                 if "id" not in user:
@@ -204,7 +215,7 @@ class SlackGitHubMapper:
                 break
             batch += 1
             self.logger.info("Listing Slack users (batch %d)", batch)
-            response = await self.slack.users_list(  # type: ignore
+            response = await self.slack.users_list(  # type: ignore[misc]
                 cursor=cursor, limit=1000
             )
         self.logger.info("Found %d Slack users", len(slack_ids))
@@ -260,7 +271,7 @@ class SlackGitHubMapper:
         """Get a user profile, handling retrying for rate limiting."""
         while True:
             try:
-                response = await self.slack.users_profile_get(  # type: ignore
+                response = await self.slack.users_profile_get(  # type: ignore[misc]
                     user=slack_id
                 )
             except SlackApiError as e:
