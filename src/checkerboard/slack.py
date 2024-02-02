@@ -19,8 +19,6 @@ from aiohttp import ClientConnectionError
 from slack.errors import SlackApiError
 
 if TYPE_CHECKING:
-    from typing import Optional
-
     from slack import WebClient  # type: ignore[attr-defined]
     from slack.web.slack_response import SlackResponse
 
@@ -223,7 +221,7 @@ class SlackGitHubMapper:
 
     async def _get_user_github(
         self, slack_id: str, semaphore: asyncio.Semaphore
-    ) -> Optional[str]:
+    ) -> str | None:
         """Get the GitHub user from a given Slack ID's profile.
 
         Parameters

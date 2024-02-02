@@ -148,6 +148,8 @@ ignore = [
     "D205",    # our documentation style allows a folded first line
     "EM101",   # justification (duplicate string in traceback) is silly
     "EM102",   # justification (duplicate string in traceback) is silly
+    "FBT001",  # positional booleans are normal for Pydantic field defaults
+    "FBT002",  # positional booleans are normal for Pydantic field defaults
     "FBT003",  # positional booleans are normal for Pydantic field defaults
     "FIX002",  # point of a TODO comment is that we're not ready to fix it
     "G004",    # forbidding logging f-strings is appealing, but not our style

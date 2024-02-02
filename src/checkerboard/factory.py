@@ -33,11 +33,15 @@ class ProcessContext:
     slack
         Configured Slack WebClient (optional).  If set, the WebClient
         must already have the authentication token set and have been
-        created with ``run_async`` set.
+        created with ``run_async`` set.  If not, the WebClient will be
+        created from the auth token in the configuration.
     """
 
     config: Configuration
     """Checkerboard configuration."""
+
+    client: WebClient
+    """Slack Client."""
 
     mapper: SlackGitHubMapper
     """Object holding map between Slack users and GitHub accounts."""
@@ -62,7 +66,7 @@ class ProcessContext:
             profile_field_name=config.profile_field,
             logger=get_logger(config.logger_name),
         )
-        return cls(config=config, mapper=mapper)
+        return cls(config=config, mapper=mapper, client=slack)
 
     async def aclose(self) -> None:
         """Clean up a process context.
@@ -88,6 +92,11 @@ class ProcessContext:
         asyncio Task and cancelled when the application is shut down.
         """
         interval = self.config.refresh_interval
+        await asyncio.sleep(interval)
+        # We sleep above because we run (and wait for) the refresh at
+        # creation time.  We assume you're going to kick off the task
+        # immediately upon startup, which will happen immediately
+        # after the first map-build finishes.
         while True:
             start = time.time()
             await self.mapper.refresh()

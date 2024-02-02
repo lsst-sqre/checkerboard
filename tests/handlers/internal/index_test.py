@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 @pytest.mark.asyncio
 async def test_get_index(aiohttp_client: TestClient) -> None:
-    """Test GET /"""
+    """Test GET / ."""
     slack = MockSlackClient()
     app = await create_app(slack=slack)
     client = await aiohttp_client(app)

@@ -9,25 +9,23 @@ from typing import TYPE_CHECKING
 from unittest.mock import Mock
 
 from aiohttp import ClientConnectionError
-from slack import WebClient
+from slack import WebClient  # type: ignore[attr-defined]
 from slack.errors import SlackApiError
 from slack.web.slack_response import SlackResponse
 
 if TYPE_CHECKING:
-    from typing import Any, Optional
+    from typing import Any
 
 
 @dataclass
 class MockUser:
-    github: Optional[str]
+    github: str | None
     is_bot: bool
     is_app_user: bool
 
 
 class MockSlackClient(Mock):
-    def __init__(
-        self, *, team_profile: Optional[dict[str, Any]] = None
-    ) -> None:
+    def __init__(self, *, team_profile: dict[str, Any] | None = None) -> None:
         super().__init__(spec=WebClient)
         self.team_profile = team_profile
         self._users: dict[str, MockUser] = {}
@@ -38,7 +36,7 @@ class MockSlackClient(Mock):
     def add_user(
         self,
         user: str,
-        github: Optional[str],
+        github: str | None,
         is_bot: bool = False,
         is_app_user: bool = False,
     ) -> None:
@@ -110,7 +108,7 @@ class MockSlackClient(Mock):
         return self.build_slack_response(data)
 
     async def users_list(
-        self, *, limit: int, cursor: Optional[str] = None
+        self, *, limit: int, cursor: str | None = None
     ) -> SlackResponse:
         assert limit
         members = self._build_user_list()
@@ -188,8 +186,8 @@ class MockSlackClientWithFailures(MockSlackClient):
         self._step = (self._step + 1) % 4
 
         if step == 0:
-            raise ClientConnectionError()
-        elif step == 1:
+            raise ClientConnectionError
+        if step == 1:
             return await super().users_profile_get(user=user)
         elif step == 2:
             response = self.build_slack_response(

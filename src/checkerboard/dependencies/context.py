@@ -11,6 +11,7 @@ from typing import Any
 
 from fastapi import Depends, HTTPException, Request
 from safir.dependencies.logger import logger_dependency
+from slack import WebClient  # type: ignore[attr-defined]
 from structlog.stdlib import BoundLogger
 
 from ..config import Configuration
@@ -106,7 +107,9 @@ class ContextDependency:
             raise RuntimeError("ContextDependency not initialized")
         return self._process_context
 
-    async def initialize(self, config: Configuration) -> None:
+    async def initialize(
+        self, config: Configuration, slack: WebClient | None = None
+    ) -> None:
         """Initialize the process-wide shared context.
 
         Parameters
@@ -117,7 +120,7 @@ class ContextDependency:
         if self._process_context:
             await self._process_context.aclose()
         self._config = config
-        self._process_context = await ProcessContext.from_config(config)
+        self._process_context = await ProcessContext.from_config(config, slack)
 
     async def aclose(self) -> None:
         """Clean up the per-process configuration."""
