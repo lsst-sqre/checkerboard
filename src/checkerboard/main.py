@@ -10,10 +10,10 @@ from safir.fastapi import ClientRequestError, client_request_error_handler
 from safir.logging import configure_uvicorn_logging
 from slack import WebClient  # type: ignore[attr-defined]
 
-from checkerboard.config import Configuration
-from checkerboard.dependencies.config import config_dependency
-from checkerboard.dependencies.context import context_dependency
-from checkerboard.handlers import ei_router, ii_router, m_router
+from .config import Configuration
+from .dependencies.config import config_dependency
+from .dependencies.context import context_dependency
+from .handlers import ei_router, ii_router, m_router
 
 
 async def create_app(

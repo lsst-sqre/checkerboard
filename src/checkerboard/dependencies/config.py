@@ -1,7 +1,5 @@
 """Config dependency for FastAPI."""
 
-from __future__ import annotations
-
 from safir.logging import configure_logging
 
 from ..config import Configuration

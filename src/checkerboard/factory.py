@@ -12,8 +12,8 @@ from slack import WebClient  # type: ignore[attr-defined]
 from structlog import get_logger
 from structlog.stdlib import BoundLogger
 
-from checkerboard.config import Configuration
-from checkerboard.storage.slack import SlackGitHubMapper
+from .config import Configuration
+from .storage.slack import SlackGitHubMapper
 
 
 @dataclass

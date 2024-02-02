@@ -6,12 +6,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from checkerboard.dependencies.auth import auth_dependency
-from checkerboard.dependencies.context import (
-    RequestContext,
-    context_dependency,
-)
 from checkerboard.exceptions import UnknownSlackUserError
+
+from ..dependencies.auth import auth_dependency
+from ..dependencies.context import RequestContext, context_dependency
 
 router = APIRouter()
 
