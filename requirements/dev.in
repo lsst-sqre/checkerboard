@@ -13,7 +13,6 @@ coverage[toml]
 mypy
 pre-commit
 pytest
-pytest-aiohttp
 pytest-asyncio
 pytest-cov
 

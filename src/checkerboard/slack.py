@@ -15,7 +15,7 @@ import logging
 from random import SystemRandom
 from typing import TYPE_CHECKING
 
-from aiohttp import ClientConnectionError
+from httpx import ConnectError
 from slack.errors import SlackApiError
 
 if TYPE_CHECKING:
@@ -277,7 +277,7 @@ class SlackGitHubMapper:
                     await self._random_delay("Rate-limited")
                     continue
                 raise
-            except ClientConnectionError:
+            except ConnectError:
                 await self._random_delay("Cannot connect to Slack")
                 continue
             else:

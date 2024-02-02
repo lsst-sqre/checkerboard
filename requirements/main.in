@@ -11,9 +11,6 @@ uvicorn[standard]
 
 aiodns
 
-# Remove aiohttp once FastAPI migration complete
-aiohttp
-aiohttp-basicauth-middleware
 chardet
 click
 pydantic

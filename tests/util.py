@@ -8,9 +8,8 @@ from random import SystemRandom
 from typing import Any
 from unittest.mock import Mock
 
-from aiohttp import ClientConnectionError
 from fastapi import FastAPI
-from httpx import AsyncClient
+from httpx import AsyncClient, ConnectError
 from slack import WebClient  # type: ignore[attr-defined]
 from slack.errors import SlackApiError
 from slack.web.slack_response import SlackResponse
@@ -185,7 +184,7 @@ class MockSlackClientWithFailures(MockSlackClient):
     """Mock Slack client that tests failures and retries.
 
     Override users_profile_get to iterate between throwing a
-    ClientConnectionError, returning success, throwing a throws a rate limit
+    ConnectError, returning success, throwing a throws a rate limit
     error, and then returning success.
     """
 
@@ -198,7 +197,7 @@ class MockSlackClientWithFailures(MockSlackClient):
         self._step = (self._step + 1) % 4
 
         if step == 0:
-            raise ClientConnectionError
+            raise ConnectError("Could not connect to Slack")
         if step == 1:
             return await super().users_profile_get(user=user)
         elif step == 2:
