@@ -13,7 +13,7 @@ from structlog import get_logger
 from structlog.stdlib import BoundLogger
 
 from checkerboard.config import Configuration
-from checkerboard.slack import SlackGitHubMapper
+from checkerboard.storage.slack import SlackGitHubMapper
 
 
 @dataclass

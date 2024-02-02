@@ -1,4 +1,4 @@
-"""Tests for the checkerboard.slack module."""
+"""Tests for the checkerboard.storage.slack module."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 import pytest
 
-from checkerboard.slack import SlackGitHubMapper, UnknownFieldError
+from checkerboard.storage.slack import SlackGitHubMapper, UnknownFieldError
 from tests.util import MockSlackClient, MockSlackClientWithFailures
 
 if TYPE_CHECKING:
