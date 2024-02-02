@@ -4,9 +4,7 @@ __all__ = ["main", "help", "run"]
 
 
 import click
-from aiohttp.web import run_app
-
-from checkerboard.app import create_app
+import uvicorn
 
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
@@ -39,5 +37,10 @@ def help(ctx: click.Context, topic: str | None) -> None:
 )
 def run(port: int) -> None:
     """Run the application (for production)."""
-    app = create_app()
-    run_app(app, port=port)
+    uvicorn.run(
+        "checkerboard.main.create_app",
+        factory=True,
+        port=port,
+        reload=True,
+        reload_dirs=["src"],
+    )

@@ -1,29 +1,23 @@
 """Tests for the checkerboard.handlers.internal.index module and routes."""
 
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
 import pytest
 
-from checkerboard.app import create_app
-from tests.util import MockSlackClient
-
-if TYPE_CHECKING:
-    from aiohttp.pytest_plugin.test_utils import TestClient
+from checkerboard.dependencies.config import config_dependency
+from checkerboard.main import create_app
+from tests.util import MockSlackClient, get_http_client
 
 
 @pytest.mark.asyncio
-async def test_get_index(aiohttp_client: TestClient) -> None:
+async def test_get_index() -> None:
     """Test GET / ."""
     slack = MockSlackClient()
     app = await create_app(slack=slack)
-    client = await aiohttp_client(app)
+    client = get_http_client(app)
 
     response = await client.get("/")
-    assert response.status == 200
+    assert response.status_code == 200
     data = await response.json()
-    assert data["name"] == app["safir/config"].name
+    assert data["name"] == config_dependency.config().name
     assert isinstance(data["version"], str)
     assert isinstance(data["description"], str)
     assert isinstance(data["repository_url"], str)

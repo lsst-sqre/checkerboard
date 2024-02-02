@@ -5,16 +5,28 @@ from __future__ import annotations
 import copy
 from dataclasses import dataclass
 from random import SystemRandom
-from typing import TYPE_CHECKING
+from typing import Any
 from unittest.mock import Mock
 
 from aiohttp import ClientConnectionError
+from fastapi import FastAPI
+from httpx import AsyncClient
 from slack import WebClient  # type: ignore[attr-defined]
 from slack.errors import SlackApiError
 from slack.web.slack_response import SlackResponse
 
-if TYPE_CHECKING:
-    from typing import Any
+from checkerboard.dependencies.config import config_dependency
+
+
+def get_http_client(app: FastAPI) -> AsyncClient:
+    return AsyncClient(
+        app=app,
+        base_url="https://example.com",
+        auth=(
+            config_dependency.config().username,
+            config_dependency.config().password,
+        ),
+    )
 
 
 @dataclass
