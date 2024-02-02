@@ -7,6 +7,7 @@ import asyncio
 import pytest
 
 from checkerboard.config import Configuration
+from checkerboard.dependencies.context import context_dependency
 from checkerboard.main import create_app
 from tests.util import MockSlackClient, get_http_client
 
@@ -27,12 +28,12 @@ async def test_refresh_interval() -> None:
     slack.add_user("U1", "githubuser")
 
     app = await create_app(config=config, slack=slack)
-
+    await context_dependency.initialize(config, slack)
     client = get_http_client(app)
 
     response = await client.get("/checkerboard/slack")
     assert response.status_code == 200
-    data = await response.json()
+    data = response.json()
     assert data == {"U1": "githubuser"}
 
     # Add another user and wait for 2 seconds, which is the refresh interval.

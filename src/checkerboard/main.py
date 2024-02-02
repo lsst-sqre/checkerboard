@@ -6,13 +6,14 @@ from contextlib import asynccontextmanager
 from importlib.metadata import version
 
 from fastapi import FastAPI
+from safir.fastapi import ClientRequestError, client_request_error_handler
 from safir.logging import configure_uvicorn_logging
 from slack import WebClient  # type: ignore[attr-defined]
 
 from checkerboard.config import Configuration
 from checkerboard.dependencies.config import config_dependency
 from checkerboard.dependencies.context import context_dependency
-from checkerboard.handlers import internal_routes, routes
+from checkerboard.handlers import ei_router, ii_router, m_router
 
 
 async def create_app(
@@ -57,11 +58,12 @@ async def create_app(
         #
         # TODO @athornton: Add Redis to the deployment to cache the mapper,
         # so we can restart without having to wait.
-        await context_dependency.process_context.mapper.refresh()
+        pcontext = context_dependency.get_process_context()
+        await pcontext.mapper.refresh()
 
         # Having gotten our initial map, we now kick off the background
         # refresh task.
-        await context_dependency.process_context.create_mapper_refresh_task()
+        await pcontext.create_mapper_refresh_task()
 
         # And with that running, we can yield the app back to the lifecycle
         # manager.
@@ -70,6 +72,7 @@ async def create_app(
 
         await context_dependency.aclose()
 
+    path_prefix = f"/{config_dependency.config().name}"
     app = FastAPI(
         title="Checkerboard",
         description=(
@@ -85,15 +88,21 @@ async def create_app(
                 ),
             },
         ],
-        openapi_url="/auth/openapi.json",
-        docs_url="/auth/docs",
-        redoc_url="/auth/redoc",
+        openapi_url=f"{path_prefix}/openapi.json",
+        docs_url=f"{path_prefix}/docs",
+        redoc_url=f"{path_prefix}/redoc",
         lifespan=lifespan,
     )
 
     # Add our routes
-    app.include_router(internal_routes)
-    app.include_router(routes)
+    # Internal routes
+    app.include_router(ii_router)
+    # External routes
+    app.include_router(ei_router, prefix=path_prefix)
+    app.include_router(m_router, prefix=path_prefix)
+
+    # Add exception handlers
+    app.exception_handler(ClientRequestError)(client_request_error_handler)
 
     configure_uvicorn_logging(config.log_level)
 

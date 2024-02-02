@@ -49,6 +49,9 @@ class RequestContext:
     factory: Factory
     """The component factory."""
 
+    process_context: ProcessContext
+    """The process-wide context."""
+
     def rebind_logger(self, **values: Any) -> None:
         """Add the given values to the logging context.
 
@@ -98,13 +101,12 @@ class ContextDependency:
             config=self._config,
             logger=logger,
             factory=Factory(self._process_context, logger),
+            process_context=self._process_context,
         )
 
-    @property
-    def process_context(self) -> ProcessContext:
-        """The underlying process context, primarily for use in tests."""
+    def get_process_context(self) -> ProcessContext:
         if not self._process_context:
-            raise RuntimeError("ContextDependency not initialized")
+            raise RuntimeError("Context Dependency not initialized")
         return self._process_context
 
     async def initialize(

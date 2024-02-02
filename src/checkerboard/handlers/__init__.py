@@ -1,18 +1,5 @@
-"""HTTP API route tables."""
+__all__ = ["ei_router", "ii_router", "m_router"]
 
-from fastapi import APIRouter
-
-__all__ = ["internal_routes", "routes"]
-
-
-internal_routes = APIRouter()
-"""Routes for the root application that serves from ``/``
-
-Application-specific routes don't get attached here. In practice, only routes
-for metrics and health checks get attached to this table. Attach public APIs
-to ``routes`` instead since those are accessible from the public API gateway
-and are prefixed with the application name.
-"""
-
-routes = APIRouter()
-"""Routes for the public API that serves from ``/<api_name>/``."""
+from .external_index import router as ei_router
+from .internal_index import router as ii_router
+from .mappings import router as m_router

@@ -1,15 +1,16 @@
 """Handlers for the app's external root, ``/<app-name>/``."""
 
-__all__ = ["get_index"]
+__all__ = ["router"]
 
 
+from fastapi import APIRouter
 from safir.metadata import Metadata, get_metadata
 
-from checkerboard.handlers import routes
+router = APIRouter()
 
 
-@routes.get("/")
-async def get_index() -> dict[str, Metadata]:
+@router.get("/")
+async def get_external_index() -> dict[str, Metadata]:
     """GET /checkerboard/ (the app's external root).
 
     By convention, the root of the external API includes a field called

@@ -1,21 +1,22 @@
 """Handlers for the app's root, ``/``."""
 
 
+from fastapi import APIRouter
 from safir.metadata import Metadata, get_metadata
 
-from checkerboard.handlers import internal_routes
+__all__ = ["router"]
 
-__all__ = ["get_index"]
+router = APIRouter()
 
 
-@internal_routes.get(
+@router.get(
     "/",
     description=("Return metadata about the running application."),
     response_model=Metadata,
     response_model_exclude_none=True,
     summary="Application metadata",
 )
-async def get_index() -> Metadata:
+async def get_internal_index() -> Metadata:
     return get_metadata(
         package_name="checkerboard", application_name="checkerboard"
     )

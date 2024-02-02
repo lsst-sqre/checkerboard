@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import pytest
+from httpx import AsyncClient, BasicAuth
 
 from checkerboard.config import Configuration
+from checkerboard.dependencies.context import context_dependency
 from checkerboard.main import create_app
 from tests.util import MockSlackClient, get_http_client
 
@@ -18,22 +20,26 @@ async def test_authentication() -> None:
     slack.add_user("U1", "githubuser")
 
     app = await create_app(config=config, slack=slack)
+    await context_dependency.initialize(config, slack)
     client = get_http_client(app)
+    assert client.auth is not None
+    unauthed_client = AsyncClient(app=app, base_url="https://example.com")
 
     # Check that all the routes require authentication.
     for route in ("slack", "slack/U1", "github/githubuser"):
-        response = await client.get(f"/checkerboard/{route}")
+        response = await unauthed_client.get(f"/checkerboard/{route}")
         assert response.status_code == 401
 
     # Check that all the routes reject the wrong authentication.
-    config.password = "this is wrong password"
-    client = get_http_client(app)  # Get client with new pw
+    badauth_client = AsyncClient(
+        app=app,
+        base_url="https://example.com",
+        auth=BasicAuth("test", "this is wrong password"),
+    )
     for route in ("slack", "slack/U1", "github/githubuser"):
-        response = await client.get(f"/checkerboard/{route}")
+        response = await badauth_client.get(f"/checkerboard/{route}")
         assert response.status_code == 401
 
-    config.password = "never use this password"
-    client = get_http_client(app)  # Get client with new pw
     # Finally, check that they accept the correct password.  The details of
     # the return value will be checked by other tests.
     for route in ("slack", "slack/U1", "github/githubuser"):
@@ -49,11 +55,12 @@ async def test_get_slack_mappings() -> None:
     slack.add_user("U2", "otheruser")
 
     app = await create_app(config=config, slack=slack)
+    await context_dependency.initialize(config, slack)
     client = get_http_client(app)
 
     response = await client.get("/checkerboard/slack")
     assert response.status_code == 200
-    data = await response.json()
+    data = response.json()
     assert data == {"U1": "githubuser", "U2": "otheruser"}
 
 
@@ -64,11 +71,12 @@ async def test_get_user_mapping_by_slack() -> None:
     slack.add_user("U1", "githubuser")
 
     app = await create_app(config=config, slack=slack)
+    await context_dependency.initialize(config, slack)
     client = get_http_client(app)
 
     response = await client.get("/checkerboard/slack/U1")
     assert response.status_code == 200
-    data = await response.json()
+    data = response.json()
     assert data == {"U1": "githubuser"}
 
     response = await client.get("/checkerboard/slack/U2")
@@ -91,11 +99,12 @@ async def test_get_user_mapping_by_github() -> None:
     slack.add_user("U1", "githubuser")
 
     app = await create_app(config=config, slack=slack)
+    await context_dependency.initialize(config, slack)
     client = get_http_client(app)
 
     response = await client.get("/checkerboard/github/githubuser")
     assert response.status_code == 200
-    data = await response.json()
+    data = response.json()
     assert data == {"U1": "githubuser"}
 
     response = await client.get("/checkerboard/github/U2")
