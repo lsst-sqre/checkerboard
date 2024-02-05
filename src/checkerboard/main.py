@@ -8,7 +8,7 @@ from importlib.metadata import version
 from fastapi import FastAPI
 from safir.fastapi import ClientRequestError, client_request_error_handler
 from safir.logging import configure_uvicorn_logging
-from slack import WebClient  # type: ignore[attr-defined]
+from slack_sdk.web.async_client import AsyncWebClient
 
 from .config import Configuration
 from .dependencies.config import config_dependency
@@ -19,7 +19,7 @@ from .handlers import ei_router, ii_router, m_router
 async def create_app(
     *,
     config: Configuration | None = None,
-    slack: WebClient | None = None,
+    slack: AsyncWebClient | None = None,
 ) -> FastAPI:
     """Create and configure the Checkerboard FastAPI application.
 
@@ -39,15 +39,15 @@ async def create_app(
         The configuration to use.  If not provided, the default Configuration
         will be used.  This is a parameter primarily to allow for dependency
         injection by the test suite.
-    slack : `WebClient`, optional
-        The Slack WebClient to use.  If not provided, one will be created
+    slack : `AsyncWebClient`, optional
+        The Slack AsyncWebClient to use.  If not provided, one will be created
         based on the application configuration.  This is a parameter primarily
         to allow for dependency injection by the test suite.
     """
     if not config:
         config = config_dependency.config()
     if not slack:
-        slack = WebClient(config.slack_token, run_async=True)
+        slack = AsyncWebClient(config.slack_token)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:

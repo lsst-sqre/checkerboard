@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import Self
 
 from safir.logging import configure_logging
-from slack import WebClient  # type: ignore[attr-defined]
+from slack_sdk.web.async_client import AsyncWebClient
 from structlog import get_logger
 from structlog.stdlib import BoundLogger
 
@@ -31,16 +31,16 @@ class ProcessContext:
     config
         Checkerboard configuration.
     slack
-        Configured Slack WebClient (optional).  If set, the WebClient
-        must already have the authentication token set and have been
-        created with ``run_async`` set.  If not, the WebClient will be
-        created from the auth token in the configuration.
+        Configured Slack AsyncWebClient (optional).  If set, the
+        AsyncWebClient must already have the authentication token set.
+        If not, the AsyncWebClient will be created from the auth token in
+        the configuration.
     """
 
     config: Configuration
     """Checkerboard configuration."""
 
-    client: WebClient
+    client: AsyncWebClient
     """Slack Client."""
 
     mapper: SlackGitHubMapper
@@ -51,7 +51,7 @@ class ProcessContext:
 
     @classmethod
     async def from_config(
-        cls, config: Configuration, slack: WebClient | None = None
+        cls, config: Configuration, slack: AsyncWebClient | None = None
     ) -> Self:
         """Create a new process context from Checkerboard configuration."""
         configure_logging(
@@ -60,7 +60,7 @@ class ProcessContext:
             name=config.logger_name,
         )
         if slack is None:
-            slack = WebClient(config.slack_token, run_async=True)
+            slack = AsyncWebClient(config.slack_token)
         mapper = SlackGitHubMapper(
             slack=slack,
             profile_field_name=config.profile_field,
@@ -118,7 +118,7 @@ class Factory:
 
     @classmethod
     async def create(
-        cls, config: Configuration, slack: WebClient | None
+        cls, config: Configuration, slack: AsyncWebClient | None
     ) -> Self:
         """Create a component factory outside of a request.
 
@@ -136,9 +136,8 @@ class Factory:
         config
             Checkerboard configuration.
         slack
-            Configured Slack WebClient (optional).  If set, the WebClient
-            must already have the authentication token set and have been
-            created with ``run_async`` set.
+            Configured Slack AsyncWebClient (optional).  If set, the
+            AsyncWebClient must already have the authentication token set.
 
         Returns
         -------
@@ -153,7 +152,7 @@ class Factory:
     @classmethod
     @asynccontextmanager
     async def standalone(
-        cls, config: Configuration, slack: WebClient | None = None
+        cls, config: Configuration, slack: AsyncWebClient | None = None
     ) -> AsyncIterator[Self]:
         """Async context manager for Checkerboard components.
 
@@ -166,9 +165,8 @@ class Factory:
         config
             Checkerboard configuration.
         slack
-            Configured Slack WebClient (optional).  If set, the WebClient
-            must already have the authentication token set and have been
-            created with ``run_async`` set.
+            Configured Slack AsyncWebClient (optional).  If set, the
+            AsyncWebClient must already have the authentication token set.
 
         Yields
         ------

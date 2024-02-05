@@ -8,11 +8,12 @@ from random import SystemRandom
 from typing import Any
 from unittest.mock import Mock
 
+from aiohttp import ClientConnectionError  # The slack client is aiohttp
 from fastapi import FastAPI
-from httpx import AsyncClient, ConnectError
-from slack import WebClient  # type: ignore[attr-defined]
-from slack.errors import SlackApiError
-from slack.web.slack_response import SlackResponse
+from httpx import AsyncClient
+from slack_sdk.errors import SlackApiError
+from slack_sdk.web.async_client import AsyncWebClient
+from slack_sdk.web.async_slack_response import AsyncSlackResponse
 
 from checkerboard.dependencies.config import config_dependency
 
@@ -37,7 +38,7 @@ class MockUser:
 
 class MockSlackClient(Mock):
     def __init__(self, *, team_profile: dict[str, Any] | None = None) -> None:
-        super().__init__(spec=WebClient)
+        super().__init__(spec=AsyncWebClient)
         self.team_profile = team_profile
         self._users: dict[str, MockUser] = {}
         self._raw_users: list[dict[str, Any]] = []
@@ -92,12 +93,12 @@ class MockSlackClient(Mock):
         self._raw_users.append(list_data)
         self._raw_user_profiles[name] = profile_data
 
-    def build_slack_response(self, data: dict[str, Any]) -> SlackResponse:
-        """Build a fake SlackResponse containing the given data."""
+    def build_slack_response(self, data: dict[str, Any]) -> AsyncSlackResponse:
+        """Build a fake AsyncSlackResponse containing the given data."""
         response_data = copy.deepcopy(data)
         if "ok" not in response_data:
             response_data["ok"] = True
-        return SlackResponse(
+        return AsyncSlackResponse(
             client=self,
             http_verb="GET",
             api_url="/mock",
@@ -107,7 +108,7 @@ class MockSlackClient(Mock):
             status_code=200,
         )
 
-    async def team_profile_get(self) -> SlackResponse:
+    async def team_profile_get(self) -> AsyncSlackResponse:
         if self.team_profile is not None:
             data = self.team_profile
         else:
@@ -120,7 +121,7 @@ class MockSlackClient(Mock):
 
     async def users_list(
         self, *, limit: int, cursor: str | None = None
-    ) -> SlackResponse:
+    ) -> AsyncSlackResponse:
         assert limit
         members = self._build_user_list()
 
@@ -145,7 +146,7 @@ class MockSlackClient(Mock):
 
         return self.build_slack_response(data)
 
-    async def users_profile_get(self, *, user: str) -> SlackResponse:
+    async def users_profile_get(self, *, user: str) -> AsyncSlackResponse:
         assert user in self._users or user in self._raw_user_profiles
 
         if user in self._users:
@@ -192,12 +193,12 @@ class MockSlackClientWithFailures(MockSlackClient):
         super().__init__()
         self._step = 0
 
-    async def users_profile_get(self, *, user: str) -> SlackResponse:
+    async def users_profile_get(self, *, user: str) -> AsyncSlackResponse:
         step = self._step
         self._step = (self._step + 1) % 4
 
         if step == 0:
-            raise ConnectError("Could not connect to Slack")
+            raise ClientConnectionError("Could not connect to Slack")
         if step == 1:
             return await super().users_profile_get(user=user)
         elif step == 2:

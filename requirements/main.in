@@ -15,5 +15,6 @@ chardet
 click
 pydantic
 safir
-slackclient[optional]
+slack_sdk
+aiohttp  # Needed by slack_sdk
 structlog

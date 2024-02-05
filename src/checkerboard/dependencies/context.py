@@ -11,7 +11,7 @@ from typing import Any
 
 from fastapi import Depends, HTTPException, Request
 from safir.dependencies.logger import logger_dependency
-from slack import WebClient  # type: ignore[attr-defined]
+from slack_sdk.web.async_client import AsyncWebClient
 from structlog.stdlib import BoundLogger
 
 from ..config import Configuration
@@ -110,7 +110,7 @@ class ContextDependency:
         return self._process_context
 
     async def initialize(
-        self, config: Configuration, slack: WebClient | None = None
+        self, config: Configuration, slack: AsyncWebClient | None = None
     ) -> None:
         """Initialize the process-wide shared context.
 

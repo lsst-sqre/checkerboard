@@ -4,16 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import TYPE_CHECKING
+from typing import Any
 from unittest.mock import patch
 
 import pytest
 
 from checkerboard.storage.slack import SlackGitHubMapper, UnknownFieldError
 from tests.util import MockSlackClient, MockSlackClientWithFailures
-
-if TYPE_CHECKING:
-    from typing import Any
 
 
 @pytest.mark.asyncio
