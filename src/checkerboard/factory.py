@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import Self
 
 from safir.logging import configure_logging
+from slack_sdk.http_retry.builtin_handlers import RateLimitErrorRetryHandler
 from slack_sdk.web.async_client import AsyncWebClient
 from structlog import get_logger
 from structlog.stdlib import BoundLogger
@@ -61,6 +62,9 @@ class ProcessContext:
         )
         if slack is None:
             slack = AsyncWebClient(config.slack_token)
+        slack.retry_handlers.append(
+            RateLimitErrorRetryHandler(max_retry_count=5)
+        )
         mapper = SlackGitHubMapper(
             slack=slack,
             profile_field_name=config.profile_field,

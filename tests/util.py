@@ -85,7 +85,7 @@ class MockSlackClient(Mock):
         name : `str`
             The Slack user ID of the user.
         list_data : `Dict` [`str`, `Any`]
-            Data returned for tha user from the ``users.list`` Slack endpoint.
+            Data returned for the user from the ``users.list`` Slack endpoint.
         profile_data : `Dict` [`str`, `Any`]
             Data returned for the user from the ``users.profile.get`` Slack
             endpoint.
