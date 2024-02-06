@@ -12,6 +12,7 @@ from aiohttp import ClientConnectionError  # The slack client is aiohttp
 from fastapi import FastAPI
 from httpx import AsyncClient
 from slack_sdk.errors import SlackApiError
+from slack_sdk.http_retry.async_handler import AsyncRetryHandler
 from slack_sdk.web.async_client import AsyncWebClient
 from slack_sdk.web.async_slack_response import AsyncSlackResponse
 
@@ -44,6 +45,7 @@ class MockSlackClient(Mock):
         self._raw_users: list[dict[str, Any]] = []
         self._raw_user_profiles: dict[str, dict[str, Any]] = {}
         self._pending: list[dict[str, dict[str, Any]]] = []
+        self.retry_handlers: list[AsyncRetryHandler] = []
 
     def add_user(
         self,

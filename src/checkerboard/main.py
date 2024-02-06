@@ -8,7 +8,9 @@ from importlib.metadata import version
 from fastapi import FastAPI
 from safir.fastapi import ClientRequestError, client_request_error_handler
 from safir.logging import configure_uvicorn_logging
-from slack_sdk.http_retry.builtin_handlers import RateLimitErrorRetryHandler
+from slack_sdk.http_retry.builtin_async_handlers import (
+    AsyncRateLimitErrorRetryHandler,
+)
 from slack_sdk.web.async_client import AsyncWebClient
 
 from .config import Configuration
@@ -50,7 +52,7 @@ async def create_app(
     if not slack:
         slack = AsyncWebClient(config.slack_token)
         slack.retry_handlers.append(
-            RateLimitErrorRetryHandler(max_retry_count=5)
+            AsyncRateLimitErrorRetryHandler(max_retry_count=5)
         )
 
     @asynccontextmanager
