@@ -7,8 +7,7 @@
 
 -c main.txt
 
-# Remove aiohttp-devtools when FastAPI migration complete
-aiohttp-devtools
+asgi-lifespan
 coverage[toml]
 mypy
 pre-commit

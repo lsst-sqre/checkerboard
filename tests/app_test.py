@@ -5,15 +5,11 @@ from __future__ import annotations
 import asyncio
 
 import pytest
+from asgi_lifespan import LifespanManager
 
 from checkerboard.config import Configuration
 from checkerboard.main import create_app
-from tests.util import (
-    MockSlackClient,
-    get_http_client,
-    simulate_app_shutdown,
-    simulate_app_startup,
-)
+from tests.util import MockSlackClient, get_http_client
 
 
 @pytest.mark.asyncio
@@ -32,27 +28,20 @@ async def test_refresh_interval() -> None:
     slack.add_user("U1", "githubuser")
 
     app = await create_app(config=config, slack=slack)
-    #
-    # This should have given us the app wrapped in the initialized
-    # context manager to do the initial refresh, and the running
-    # background task...  but no.  Why not?
-    #
-    await simulate_app_startup(config, slack)
+    async with LifespanManager(app):
+        client = get_http_client(app)
 
-    client = get_http_client(app)
+        response = await client.get("/checkerboard/slack")
+        assert response.status_code == 200
+        data = response.json()
+        assert data == {"U1": "githubuser"}
 
-    response = await client.get("/checkerboard/slack")
-    assert response.status_code == 200
-    data = response.json()
-    assert data == {"U1": "githubuser"}
+        # Add another user and wait for 2 seconds, which is the refresh
+        # interval.
+        slack.add_user("U2", "otheruser")
+        await asyncio.sleep(2)
 
-    # Add another user and wait for 2 seconds, which is the refresh interval.
-    slack.add_user("U2", "otheruser")
-    await asyncio.sleep(2)
-
-    response = await client.get("/checkerboard/slack")
-    assert response.status_code == 200
-    data = response.json()
-    assert data == {"U1": "githubuser", "U2": "otheruser"}
-
-    await simulate_app_shutdown()
+        response = await client.get("/checkerboard/slack")
+        assert response.status_code == 200
+        data = response.json()
+        assert data == {"U1": "githubuser", "U2": "otheruser"}
