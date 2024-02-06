@@ -6,9 +6,13 @@ import pytest
 from httpx import AsyncClient, BasicAuth
 
 from checkerboard.config import Configuration
-from checkerboard.dependencies.context import context_dependency
 from checkerboard.main import create_app
-from tests.util import MockSlackClient, get_http_client
+from tests.util import (
+    MockSlackClient,
+    get_http_client,
+    simulate_app_shutdown,
+    simulate_app_startup,
+)
 
 
 @pytest.mark.asyncio
@@ -20,7 +24,8 @@ async def test_authentication() -> None:
     slack.add_user("U1", "githubuser")
 
     app = await create_app(config=config, slack=slack)
-    await context_dependency.initialize(config, slack)
+    await simulate_app_startup(config, slack)
+
     client = get_http_client(app)
     assert client.auth is not None
     unauthed_client = AsyncClient(app=app, base_url="https://example.com")
@@ -46,6 +51,8 @@ async def test_authentication() -> None:
         response = await client.get(f"/checkerboard/{route}")
         assert response.status_code == 200
 
+    await simulate_app_shutdown()
+
 
 @pytest.mark.asyncio
 async def test_get_slack_mappings() -> None:
@@ -55,13 +62,16 @@ async def test_get_slack_mappings() -> None:
     slack.add_user("U2", "otheruser")
 
     app = await create_app(config=config, slack=slack)
-    await context_dependency.initialize(config, slack)
+    await simulate_app_startup(config, slack)
+
     client = get_http_client(app)
 
     response = await client.get("/checkerboard/slack")
     assert response.status_code == 200
     data = response.json()
     assert data == {"U1": "githubuser", "U2": "otheruser"}
+
+    await simulate_app_shutdown()
 
 
 @pytest.mark.asyncio
@@ -71,7 +81,8 @@ async def test_get_user_mapping_by_slack() -> None:
     slack.add_user("U1", "githubuser")
 
     app = await create_app(config=config, slack=slack)
-    await context_dependency.initialize(config, slack)
+    await simulate_app_startup(config, slack)
+
     client = get_http_client(app)
 
     response = await client.get("/checkerboard/slack/U1")
@@ -89,7 +100,11 @@ async def test_get_user_mapping_by_slack() -> None:
     assert response.status_code == 404
 
     response = await client.get("/checkerboard/slack/")
-    assert response.status_code == 404
+    assert response.status_code == 200
+    data = response.json()
+    assert data == {"U1": "githubuser"}
+
+    await simulate_app_shutdown()
 
 
 @pytest.mark.asyncio
@@ -99,7 +114,8 @@ async def test_get_user_mapping_by_github() -> None:
     slack.add_user("U1", "githubuser")
 
     app = await create_app(config=config, slack=slack)
-    await context_dependency.initialize(config, slack)
+    await simulate_app_startup(config, slack)
+
     client = get_http_client(app)
 
     response = await client.get("/checkerboard/github/githubuser")
@@ -115,3 +131,5 @@ async def test_get_user_mapping_by_github() -> None:
 
     response = await client.get("/checkerboard/github/")
     assert response.status_code == 404
+
+    await simulate_app_shutdown()

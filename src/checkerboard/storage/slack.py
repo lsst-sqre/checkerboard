@@ -118,15 +118,17 @@ class SlackGitHubMapper:
                 self.profile_field_name
             )
 
-        # Get the list of users and then their profile data, enforcing a
-        # concurrency limit on the profile fetches.
+        # Get the list of users and then their profile data.
         slack_to_github: dict[str, str] = {}
         slack_ids = await self._get_user_list()
+        # The whole scatter/gather thing is probably useless, given that
+        # the Slack rate limit is generally quite low.  We might just
+        # want to roll this into a one-at-a-time loop.
         semaphore = asyncio.Semaphore(self.slack_concurrency)
         github_awaits = [
             self._get_user_github(u, semaphore) for u in slack_ids
         ]
-        self.logger.info("Checking profiles of %d Slack users", len(slack_ids))
+        self.logger.info(f"Checking profiles of {len(slack_ids)} Slack users")
         github_ids = await asyncio.gather(*github_awaits)
         for slack_id, github_id in zip(slack_ids, github_ids, strict=False):
             if github_id:
@@ -139,12 +141,10 @@ class SlackGitHubMapper:
             self._github_to_slack = github_to_slack
 
         length = len(slack_to_github)
-        self.logger.info(
-            "Refreshed GitHub map from Slack (%d entries)", length
-        )
+        self.logger.info(f"Refreshed GitHub map from Slack ({length} entries)")
 
     async def map(self) -> dict[str, str]:
-        return self._github_to_slack
+        return self._slack_to_github
 
     async def slack_for_github_user(self, github_id: str) -> str | None:
         """Return the Slack user ID for a GitHub user, if any.

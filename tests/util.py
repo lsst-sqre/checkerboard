@@ -16,7 +16,9 @@ from slack_sdk.http_retry.async_handler import AsyncRetryHandler
 from slack_sdk.web.async_client import AsyncWebClient
 from slack_sdk.web.async_slack_response import AsyncSlackResponse
 
+from checkerboard.config import Configuration
 from checkerboard.dependencies.config import config_dependency
+from checkerboard.dependencies.context import context_dependency
 
 
 def get_http_client(app: FastAPI) -> AsyncClient:
@@ -27,7 +29,21 @@ def get_http_client(app: FastAPI) -> AsyncClient:
             config_dependency.config().username,
             config_dependency.config().password,
         ),
+        follow_redirects=True,
     )
+
+
+async def simulate_app_startup(
+    config: Configuration, slack: AsyncWebClient
+) -> None:
+    await context_dependency.initialize(config, slack)
+    pcontext = context_dependency.get_process_context()
+    await pcontext.mapper.refresh()
+    await pcontext.create_mapper_refresh_task()
+
+
+async def simulate_app_shutdown() -> None:
+    await context_dependency.aclose()
 
 
 @dataclass
@@ -126,27 +142,10 @@ class MockSlackClient(Mock):
     ) -> AsyncSlackResponse:
         assert limit
         members = self._build_user_list()
-
-        # Regardless of what limit is, return only the first five elements
-        # without a cursor and everything else with the (right) cursor.
-        if cursor:
-            assert cursor == "some-cursor"
-            assert self._pending
-            data = {
-                "members": self._pending,
-                "response_metadata": {"next_cursor": ""},
-            }
-            self._pending = []
-        else:
-            assert not self._pending
-            data = {"members": members[:5]}
-            if len(members) > 5:
-                data["response_metadata"] = {"next_cursor": "some-cursor"}
-                self._pending = members[5:]
-            else:
-                data["response_metadata"] = {"next_cursor": ""}
-
-        return self.build_slack_response(data)
+        # Cursor support has been dropped, because the Slack client now
+        # natively does pagination for us, so we no longer have to simulate
+        # it.
+        return self.build_slack_response({"members": members})
 
     async def users_profile_get(self, *, user: str) -> AsyncSlackResponse:
         assert user in self._users or user in self._raw_user_profiles

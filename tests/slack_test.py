@@ -86,8 +86,9 @@ async def test_mapper() -> None:
         "UX4", {}, {"display_name_normalized": "foo", "fields": {}}
     )
 
-    # Now, run refresh.  This will test both handling of invalid users and
-    # pagination, since these will be returned in two groups.
+    # Now, run refresh.  This will test handling of invalid users.
+    # Pagination is now the real slack client's problem, not ours, so we
+    # don't do any cursor checking.
     await mapper.refresh()
 
     # Check that the resulting mapping is correct for valid users.

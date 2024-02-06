@@ -56,7 +56,7 @@ async def create_app(
         )
 
     @asynccontextmanager
-    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         await context_dependency.initialize(config, slack)
 
         # Now we're going to wait for the mapper to populate.  This may
@@ -75,7 +75,6 @@ async def create_app(
         # manager.
 
         yield
-
         await context_dependency.aclose()
 
     path_prefix = f"/{config_dependency.config().name}"
@@ -97,7 +96,7 @@ async def create_app(
         openapi_url=f"{path_prefix}/openapi.json",
         docs_url=f"{path_prefix}/docs",
         redoc_url=f"{path_prefix}/redoc",
-        lifespan=lifespan,
+        lifespan=_lifespan,
     )
 
     # Add our routes
@@ -110,6 +109,7 @@ async def create_app(
     # Add exception handlers
     app.exception_handler(ClientRequestError)(client_request_error_handler)
 
+    # Rationalize logs
     configure_uvicorn_logging(config.log_level)
 
     return app
