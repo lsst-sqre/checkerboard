@@ -38,7 +38,7 @@ def help(ctx: click.Context, topic: str | None) -> None:
 def run(port: int) -> None:
     """Run the application (for production)."""
     uvicorn.run(
-        "checkerboard.main.create_app",
+        "checkerboard.main:create_app",
         factory=True,
         port=port,
         reload=True,

@@ -27,7 +27,7 @@ async def test_refresh_interval() -> None:
     slack = MockSlackClient()
     slack.add_user("U1", "githubuser")
 
-    app = await create_app(config=config, slack=slack)
+    app = create_app(config=config, slack=slack)
     async with LifespanManager(app):
         client = get_http_client(app)
 

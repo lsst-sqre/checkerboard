@@ -19,7 +19,7 @@ from .dependencies.context import context_dependency
 from .handlers import ei_router, ii_router, m_router
 
 
-async def create_app(
+def create_app(
     *,
     config: Configuration | None = None,
     slack: AsyncWebClient | None = None,
