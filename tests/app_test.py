@@ -9,7 +9,7 @@ from asgi_lifespan import LifespanManager
 
 from checkerboard.config import Configuration
 from checkerboard.main import create_app
-from tests.util import MockSlackClient, get_http_client
+from tests.util import MockRedisClient, MockSlackClient, get_http_client
 
 
 @pytest.mark.asyncio
@@ -27,7 +27,9 @@ async def test_refresh_interval() -> None:
     slack = MockSlackClient()
     slack.add_user("U1", "githubuser")
 
-    app = create_app(config=config, slack=slack)
+    redis_client = MockRedisClient()
+
+    app = create_app(config=config, slack=slack, redis_client=redis_client)
     async with LifespanManager(app):
         client = get_http_client(app)
 

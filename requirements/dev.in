@@ -21,3 +21,4 @@ scriv[toml]
 
 # Type hints
 types-pyyaml
+types-redis

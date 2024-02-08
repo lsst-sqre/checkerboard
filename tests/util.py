@@ -5,13 +5,13 @@ from __future__ import annotations
 import copy
 from dataclasses import dataclass
 from random import SystemRandom
-from typing import Any
+from typing import Any, Self
 from unittest.mock import Mock
 
 from aiohttp import ClientConnectionError  # The slack client is aiohttp
 from fastapi import FastAPI
 from httpx import AsyncClient
-from slack_sdk.errors import SlackApiError
+from redis.asyncio import Redis
 from slack_sdk.http_retry.async_handler import AsyncRetryHandler
 from slack_sdk.web.async_client import AsyncWebClient
 from slack_sdk.web.async_slack_response import AsyncSlackResponse
@@ -47,6 +47,7 @@ class MockSlackClient(Mock):
         self._raw_user_profiles: dict[str, dict[str, Any]] = {}
         self._pending: list[dict[str, dict[str, Any]]] = []
         self.retry_handlers: list[AsyncRetryHandler] = []
+        self.redis = MockRedisClient.from_url("redis://localhost:5379/0")
 
     def add_user(
         self,
@@ -171,8 +172,11 @@ class MockSlackClientWithFailures(MockSlackClient):
     """Mock Slack client that tests failures and retries.
 
     Override users_profile_get to iterate between throwing a
-    ConnectError, returning success, throwing a throws a rate limit
-    error, and then returning success.
+    ConnectError, and returning success.
+
+    We do not test rate-limiting anymore, because the slack client, when
+    configured with a rate-limiting handler (which we do), manages retries
+    internally.
     """
 
     def __init__(self) -> None:
@@ -181,18 +185,32 @@ class MockSlackClientWithFailures(MockSlackClient):
 
     async def users_profile_get(self, *, user: str) -> AsyncSlackResponse:
         step = self._step
-        self._step = (self._step + 1) % 4
+        self._step = (self._step + 1) % 2
 
         if step == 0:
             raise ClientConnectionError("Could not connect to Slack")
         if step == 1:
             return await super().users_profile_get(user=user)
-        elif step == 2:
-            response = self.build_slack_response(
-                {"ok": False, "error": "ratelimited"}
-            )
-            raise SlackApiError("test exception", response)
-        elif step == 3:
-            return await super().users_profile_get(user=user)
         else:
             raise NotImplementedError("invalid step number")
+
+
+class MockRedisClient(Mock):
+    def __init__(self) -> None:
+        super().__init__(spec=Redis)
+        self._map: dict[str, str] = {}
+
+    @classmethod
+    def from_url(cls, url: str) -> Self:
+        _ = url
+        return cls()
+
+    async def get(self, key: str) -> str | None:
+        return self._map.get(key)
+
+    async def set(self, key: str, value: str) -> None:
+        self._map[key] = value
+
+    async def delete(self, key: str) -> None:
+        if key in self._map:
+            del self._map[key]

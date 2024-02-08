@@ -7,6 +7,7 @@ from contextlib import aclosing, asynccontextmanager, suppress
 from dataclasses import dataclass
 from typing import Self
 
+import redis.asyncio as redis
 from safir.logging import configure_logging
 from slack_sdk.http_retry.builtin_async_handlers import (
     AsyncRateLimitErrorRetryHandler,
@@ -38,6 +39,10 @@ class ProcessContext:
         AsyncWebClient must already have the authentication token set.
         If not, the AsyncWebClient will be created from the auth token in
         the configuration.
+    redis_client
+        Configured Redis async client (optional).  If not set, the redis
+        client will be created from the redis url and password in the
+        configuration.
     """
 
     config: Configuration
@@ -49,12 +54,18 @@ class ProcessContext:
     mapper: SlackGitHubMapper
     """Object holding map between Slack users and GitHub accounts."""
 
+    redis_client: redis.Redis | None = None
+    """Client for communication with Checkerboard's redis."""
+
     refresh_task: asyncio.Task | None = None
     """Task to periodically refresh user map."""
 
     @classmethod
     async def from_config(
-        cls, config: Configuration, slack: AsyncWebClient | None = None
+        cls,
+        config: Configuration,
+        slack: AsyncWebClient | None = None,
+        redis_client: redis.Redis | None = None,
     ) -> Self:
         """Create a new process context from Checkerboard configuration."""
         configure_logging(
@@ -67,12 +78,23 @@ class ProcessContext:
         slack.retry_handlers.append(
             AsyncRateLimitErrorRetryHandler(max_retry_count=5)
         )
+        if redis_client is None:
+            redis_client = redis.Redis.from_url(
+                config.redis_url, password=config.redis_password
+            )
         mapper = SlackGitHubMapper(
             slack=slack,
             profile_field_name=config.profile_field,
             logger=get_logger(config.logger_name),
+            redis=redis_client,
         )
-        return cls(config=config, mapper=mapper, client=slack)
+
+        return cls(
+            config=config,
+            mapper=mapper,
+            client=slack,
+            redis_client=redis_client,
+        )
 
     async def aclose(self) -> None:
         """Clean up a process context.

@@ -657,6 +657,10 @@ pyyaml==6.0.1 \
     --hash=sha256:fd1592b3fdf65fff2ad0004b5e363300ef59ced41c2e6b3a99d4089fa8c5435d \
     --hash=sha256:fd66fc5d0da6d9815ba2cebeb4205f95818ff4b79c3ebe268e75d961704af52f
     # via uvicorn
+redis==5.0.1 \
+    --hash=sha256:0dab495cd5753069d3bc650a0dde8a8f9edde16fc5691b689a566eda58100d0f \
+    --hash=sha256:ed4802971884ae19d640775ba3b03aa2e7bd5e8fb8dfaed2decce4d0fc48391f
+    # via -r requirements/main.in
 safir==5.2.0 \
     --hash=sha256:93636256dbeea847d63de6d3b434c952f81d6729f6541da09bfc7823d3f61806 \
     --hash=sha256:fe8f51d00449a60544f9eccdb8e603f085fdd4f641f5d5f13cef0f29393aad3f

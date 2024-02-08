@@ -15,8 +15,8 @@ import logging
 from random import SystemRandom
 from typing import Any
 
+import redis.asyncio as redis
 from aiohttp import ClientConnectionError
-from slack_sdk.errors import SlackApiError
 from slack_sdk.web.async_client import AsyncWebClient
 from slack_sdk.web.async_slack_response import AsyncSlackResponse
 
@@ -46,13 +46,11 @@ class SlackGitHubMapper:
     profile_field_name : `str`
         The name of the custom Slack profile field that contains the GitHub
         username.
+    redis : `redis_asyncio.Redis`, optional
+        Configured redis client to use for talking to redis
     logger : `logging.Logger`, optional
         Logger to use for status messages.  Defaults to the logger for
         __name__.
-    slack_concurrency : `int`, optional
-        The number of concurrent requests to make to the Slack API.  Setting
-        this too high will cause Slack to rate-limit profile queries, which
-        will be handled by pausing and will slow down the mapping.
     """
 
     def __init__(
@@ -60,6 +58,7 @@ class SlackGitHubMapper:
         slack: AsyncWebClient,
         profile_field_name: str,
         *,
+        redis: redis.Redis | None = None,
         logger: logging.Logger | None = None,
         slack_concurrency: int = 1,
     ) -> None:
@@ -67,6 +66,7 @@ class SlackGitHubMapper:
         self.profile_field_name = profile_field_name
         self.slack_concurrency = slack_concurrency
         self.logger = logger or logging.getLogger(__name__)
+        self.redis = redis
         self._profile_field_id: str | None = None
         self._slack_to_github: dict[str, str] = {}
         self._github_to_slack: dict[str, str] = {}
@@ -120,20 +120,44 @@ class SlackGitHubMapper:
 
         # Get the list of users and then their profile data.
         slack_to_github: dict[str, str] = {}
+        github_to_slack: dict[str, str] = {}
         slack_ids = await self._get_user_list()
-        # The whole scatter/gather thing is probably useless, given that
-        # the Slack rate limit is generally quite low.  We might just
-        # want to roll this into a one-at-a-time loop.
-        semaphore = asyncio.Semaphore(self.slack_concurrency)
-        github_awaits = [
-            self._get_user_github(u, semaphore) for u in slack_ids
-        ]
-        self.logger.info(f"Checking profiles of {len(slack_ids)} Slack users")
-        github_ids = await asyncio.gather(*github_awaits)
-        for slack_id, github_id in zip(slack_ids, github_ids, strict=False):
-            if github_id:
-                slack_to_github[slack_id] = github_id
-        github_to_slack = {g: u for u, g in slack_to_github.items()}
+        need_lookup: list[str] = []
+
+        if self.redis is None:
+            need_lookup = slack_ids
+        else:
+            for sl_u in slack_ids:
+                # If the key does not exist in redis, we need to check it.
+                # This is inefficient since we are always rechecking all
+                # our negative-result users...but once we find someone, they
+                # get stored, and will be found without a lookup.  In the
+                # steady-state case, there aren't very many people we want
+                # to look up who don't exist, but there are a whole bunch
+                # of Slack users we're just going to keep checking in case
+                # they have filled in the appropriate field.  It seems like
+                # we could do better here.
+                #
+                # We also don't have a way to delete users, but we'll worry
+                # about that later.  At worst we'll be spamming users who
+                # no longer care about their Jenkins jobs but then why are
+                # they running them?
+                gh_u = await self.redis.get(sl_u)
+                if not gh_u:
+                    need_lookup.append(sl_u)
+                else:
+                    slack_to_github[sl_u] = gh_u
+                    github_to_slack[gh_u] = sl_u
+                    self.logger.info(
+                        f"Checking profiles of {len(need_lookup)} Slack users"
+                    )
+        for sl_u in need_lookup:
+            gh_u = await self._get_user_github(sl_u)
+            if gh_u:
+                slack_to_github[sl_u] = gh_u
+                github_to_slack[gh_u] = sl_u
+                if self.redis is not None:
+                    await self.redis.set(sl_u, gh_u)
 
         # Replace the cached data.
         async with self._lock:
@@ -196,19 +220,13 @@ class SlackGitHubMapper:
         self.logger.info("Found %d Slack users", len(slack_ids))
         return slack_ids
 
-    async def _get_user_github(
-        self, slack_id: str, semaphore: asyncio.Semaphore
-    ) -> str | None:
+    async def _get_user_github(self, slack_id: str) -> str | None:
         """Get the GitHub user from a given Slack ID's profile.
 
         Parameters
         ----------
         slack_id : `str`
             Slack user ID for which to get the corresponding GitHub user.
-        semaphore : `asyncio.Semaphore`
-            Semaphore controlling Slack API calls, used to avoid overruning
-            Slack's rate limits and opening too many connections to their
-            servers.
 
         Returns
         -------
@@ -216,8 +234,7 @@ class SlackGitHubMapper:
             The corresponding GitHub user if there is one, or None.  All user
             IDs are forced to lowercase since GitHub is case-insensitive.
         """
-        async with semaphore:
-            response = await self._get_user_profile(slack_id)
+        response = await self._get_user_profile_from_slack(slack_id)
         profile = response["profile"]
         if not profile:
             return None
@@ -239,24 +256,23 @@ class SlackGitHubMapper:
         )
         return github_id
 
-    async def _get_user_profile(self, slack_id: str) -> AsyncSlackResponse:
-        """Get a user profile, handling retrying for rate limiting."""
+    async def _get_user_profile_from_slack(
+        self, slack_id: str
+    ) -> AsyncSlackResponse:
+        """Get a user profile.  Slack client will handle rate-limiting."""
+        max_retries = 10
+        retries = 0
         while True:
             try:
-                response = await self.slack.users_profile_get(user=slack_id)
-            except SlackApiError as e:
-                if e.response["error"] == "ratelimited":
-                    await self._random_delay("Rate-limited")
-                    continue
-                raise
+                return await self.slack.users_profile_get(user=slack_id)
             except ClientConnectionError:
+                if retries >= max_retries:
+                    raise
                 await self._random_delay("Cannot connect to Slack")
-                continue
-            else:
-                return response
+                retries += 1
 
     async def _random_delay(self, reason: str) -> None:
         """Delay for a random period between 2 and 5 seconds."""
         delay = SystemRandom().randrange(2, 5)
-        self.logger.warning("%s, sleeping for %d seconds", reason, delay)
+        self.logger.warning(f"{reason}, sleeping for {delay} seconds")
         await asyncio.sleep(delay)

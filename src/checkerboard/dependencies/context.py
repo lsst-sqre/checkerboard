@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from fastapi import Depends, HTTPException, Request
+from redis.asyncio import Redis
 from safir.dependencies.logger import logger_dependency
 from slack_sdk.web.async_client import AsyncWebClient
 from structlog.stdlib import BoundLogger
@@ -110,7 +111,10 @@ class ContextDependency:
         return self._process_context
 
     async def initialize(
-        self, config: Configuration, slack: AsyncWebClient | None = None
+        self,
+        config: Configuration,
+        slack: AsyncWebClient | None = None,
+        redis_client: Redis | None = None,
     ) -> None:
         """Initialize the process-wide shared context.
 
@@ -122,7 +126,9 @@ class ContextDependency:
         if self._process_context:
             await self._process_context.aclose()
         self._config = config
-        self._process_context = await ProcessContext.from_config(config, slack)
+        self._process_context = await ProcessContext.from_config(
+            config, slack, redis_client
+        )
 
     async def aclose(self) -> None:
         """Clean up the per-process configuration."""

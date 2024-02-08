@@ -180,7 +180,7 @@ async def test_invalid_profile_field() -> None:
 
 @pytest.mark.asyncio
 async def test_backoff() -> None:
-    """Test backoff and retry on errors and rate limiting."""
+    """Test backoff and retry on errors."""
     slack = MockSlackClientWithFailures()
     slack.add_user("U1", "githubuser")
     slack.add_user("U2", "otheruser")

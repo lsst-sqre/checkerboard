@@ -14,6 +14,7 @@ aiodns
 chardet
 click
 pydantic
+redis
 safir
 slack_sdk
 aiohttp  # Needed by slack_sdk

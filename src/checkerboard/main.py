@@ -5,6 +5,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from importlib.metadata import version
 
+import redis.asyncio as redis
 from fastapi import FastAPI
 from safir.fastapi import ClientRequestError, client_request_error_handler
 from safir.logging import configure_uvicorn_logging
@@ -23,6 +24,7 @@ def create_app(
     *,
     config: Configuration | None = None,
     slack: AsyncWebClient | None = None,
+    redis_client: redis.Redis | None = None,
 ) -> FastAPI:
     """Create and configure the Checkerboard FastAPI application.
 
@@ -46,6 +48,10 @@ def create_app(
         The Slack AsyncWebClient to use.  If not provided, one will be created
         based on the application configuration.  This is a parameter primarily
         to allow for dependency injection by the test suite.
+    redis_client : `redis.asyncio.Redis`, optional
+        The Redis async client to use.  If not provided, one will be created
+        based on the application configuration.  This is a parameter primarily
+        to allow for dependency injection by the test suite.
     """
     if not config:
         config = config_dependency.config()
@@ -54,10 +60,14 @@ def create_app(
         slack.retry_handlers.append(
             AsyncRateLimitErrorRetryHandler(max_retry_count=5)
         )
+    if not redis_client:
+        redis_client = redis.Redis.from_url(
+            config.redis_url, password=config.redis_password
+        )
 
     @asynccontextmanager
     async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
-        await context_dependency.initialize(config, slack)
+        await context_dependency.initialize(config, slack, redis_client)
 
         # Now we're going to wait for the mapper to populate.  This may
         # take 10-15 minutes, so adjust healthchecks appropriately.

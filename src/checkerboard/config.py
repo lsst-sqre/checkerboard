@@ -96,3 +96,21 @@ class Configuration(CamelCaseModel):
             " ``CHECKERBOARD_PASSWORD`` environment variable."
         ),
     )
+
+    redis_password: str = Field(
+        os.getenv("CHECKERBOARD_REDIS_PASSWORD", ""),
+        title="Password for Checkerboard to authenticate to its Redis",
+        description=(
+            "Password for using Checkerboard's Redis.  Set with the"
+            " ``CHECKERBOARD_REDIS_PASSWORD`` environment variable."
+        ),
+    )
+
+    redis_url: str = Field(
+        os.getenv("CHECKERBOARD_REDIS_URL", ""),
+        title="URL for Checkerboard's Redis",
+        description=(
+            "URL for Checkerboard's Redis.  Set with the"
+            " ``CHECKERBOARD_REDIS_PASSWORD`` environment variable."
+        ),
+    )
