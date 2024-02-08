@@ -62,7 +62,7 @@ def create_app(
         )
     if not redis_client:
         redis_client = redis.Redis.from_url(
-            config.redis_url, password=config.redis_password
+            config.redis_url, password=config.redis_password, socket_timeout=5
         )
 
     @asynccontextmanager

@@ -80,7 +80,9 @@ class ProcessContext:
         )
         if redis_client is None:
             redis_client = redis.Redis.from_url(
-                config.redis_url, password=config.redis_password
+                config.redis_url,
+                password=config.redis_password,
+                socket_timeout=5,
             )
         mapper = SlackGitHubMapper(
             slack=slack,
