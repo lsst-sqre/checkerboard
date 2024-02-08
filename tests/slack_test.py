@@ -10,14 +10,19 @@ from unittest.mock import patch
 import pytest
 
 from checkerboard.storage.slack import SlackGitHubMapper, UnknownFieldError
-from tests.util import MockSlackClient, MockSlackClientWithFailures
+from tests.util import (
+    MockRedisClient,
+    MockSlackClient,
+    MockSlackClientWithFailures,
+)
 
 
 @pytest.mark.asyncio
 async def test_mapper() -> None:
     """Tests of the mapper, primarily around data parsing and robustness."""
     slack = MockSlackClient()
-    mapper = SlackGitHubMapper(slack, "GitHub Username")
+    redis_client = MockRedisClient()
+    mapper = SlackGitHubMapper(slack, "GitHub Username", redis_client)
 
     # Add some users with and without GitHub username mappings.
     slack.add_user("U1", "githubuser")
@@ -139,7 +144,8 @@ async def test_mapper() -> None:
 async def test_invalid_profile_field() -> None:
     """Test handling of invalid or missing custom profile fields."""
     slack = MockSlackClient()
-    mapper = SlackGitHubMapper(slack, "Other Field")
+    redis_client = MockRedisClient()
+    mapper = SlackGitHubMapper(slack, "Other Field", redis_client)
     with pytest.raises(UnknownFieldError):
         await mapper.refresh()
 
@@ -155,8 +161,9 @@ async def test_invalid_profile_field() -> None:
         }
     }
     slack = MockSlackClient(team_profile=team_profile)
+    redis_client = MockRedisClient()
     slack.add_user("U1", "githubuser")
-    mapper = SlackGitHubMapper(slack, "GitHub Username")
+    mapper = SlackGitHubMapper(slack, "GitHub Username", redis_client)
     await mapper.refresh()
     assert await mapper.github_for_slack_user("U1") == "githubuser"
 
@@ -173,7 +180,8 @@ async def test_invalid_profile_field() -> None:
     ]
     for team_profile in test_profiles:
         slack = MockSlackClient(team_profile=team_profile)
-        mapper = SlackGitHubMapper(slack, "GitHub Username")
+        redis_client = MockRedisClient()
+        mapper = SlackGitHubMapper(slack, "GitHub Username", redis_client)
         with pytest.raises(UnknownFieldError):
             await mapper.refresh()
 
@@ -185,12 +193,15 @@ async def test_backoff() -> None:
     slack.add_user("U1", "githubuser")
     slack.add_user("U2", "otheruser")
 
+    redis_client = MockRedisClient()
     # Patch out the sleep to reduce waiting, and confirm that we slept for a
     # random number of seconds between 2 and 5 twice, since we should have
     # gotten two retriable failures from MockSlackClientWithFailures.
     #
     # AsyncMock was introduced in Python 3.8, so sadly we can't use it yet.
-    mapper = SlackGitHubMapper(slack, "GitHub Username")
+    #
+    # Well, now we could, but this works just fine.
+    mapper = SlackGitHubMapper(slack, "GitHub Username", redis_client)
     with patch("asyncio.sleep") as sleep:
         sleep.return_value = asyncio.Future()
         sleep.return_value.set_result(None)

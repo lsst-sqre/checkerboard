@@ -83,6 +83,7 @@ class ProcessContext:
                 config.redis_url,
                 password=config.redis_password,
                 socket_timeout=5,
+                auto_close_connection_pool=True,
             )
         mapper = SlackGitHubMapper(
             slack=slack,
@@ -108,6 +109,8 @@ class ProcessContext:
             self.refresh_task.cancel()
             with suppress(asyncio.CancelledError):
                 await self.refresh_task
+        if self.redis_client is not None:
+            await self.redis_client.aclose()
 
     async def create_mapper_refresh_task(self) -> None:
         """Spawn a background task to refresh the Slack <-> GitHub mapper."""

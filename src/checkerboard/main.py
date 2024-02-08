@@ -62,20 +62,22 @@ def create_app(
         )
     if not redis_client:
         redis_client = redis.Redis.from_url(
-            config.redis_url, password=config.redis_password, socket_timeout=5
+            config.redis_url,
+            password=config.redis_password,
+            socket_timeout=5,
+            auto_close_connection_pool=True,
         )
 
     @asynccontextmanager
     async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         await context_dependency.initialize(config, slack, redis_client)
 
-        # Now we're going to wait for the mapper to populate.  This may
-        # take 10-15 minutes, so adjust healthchecks appropriately.
-        #
-        # TODO @athornton: Add Redis to the deployment to cache the mapper,
-        # so we can restart without having to wait.
+        # Now we're going to wait for the mapper to populate.  This will
+        # take 20 minutes or so if there is no redis cache.  However, if
+        # there is a redis cache, we'll start the app with what we have
+        # and refresh in the background.
         pcontext = context_dependency.get_process_context()
-        await pcontext.mapper.refresh()
+        await pcontext.mapper.start()
 
         # Having gotten our initial map, we now kick off the background
         # refresh task.
