@@ -158,6 +158,7 @@ class SlackGitHubMapper:
         UnknownFieldError
             The expected custom Slack profile field is not defined.
         """
+        self.logger.debug("Initiating map refresh")
         slack_to_github: dict[str, str] = {}
         github_to_slack: dict[str, str] = {}
         if not self._profile_field_id:

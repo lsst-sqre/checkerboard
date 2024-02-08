@@ -125,11 +125,6 @@ class ProcessContext:
         asyncio Task and cancelled when the application is shut down.
         """
         interval = self.config.refresh_interval
-        await asyncio.sleep(interval)
-        # We sleep above because we run (and wait for) the refresh at
-        # creation time.  We assume you're going to kick off the task
-        # immediately upon startup, which will happen immediately
-        # after the first map-build finishes.
         while True:
             start = time.time()
             await self.mapper.refresh()
