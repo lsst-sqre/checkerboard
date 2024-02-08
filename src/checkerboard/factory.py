@@ -86,7 +86,7 @@ class ProcessContext:
             slack=slack,
             profile_field_name=config.profile_field,
             logger=get_logger(config.logger_name),
-            redis=redis_client,
+            redis_client=redis_client,
         )
 
         return cls(

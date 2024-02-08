@@ -1,11 +1,4 @@
-"""Mappers for Slack users.
-
-Notes
------
-Calls into the Slack client have to be marked with ``# type: ignore``
-currently because the typing of those calls cannot handle the optionality of
-the async/await interface.
-"""
+"""Mappers for Slack users."""
 
 from __future__ import annotations
 
@@ -46,7 +39,7 @@ class SlackGitHubMapper:
     profile_field_name : `str`
         The name of the custom Slack profile field that contains the GitHub
         username.
-    redis : `redis_asyncio.Redis`, optional
+    redis_client : `redis_asyncio.Redis`, optional
         Configured redis client to use for talking to redis
     logger : `logging.Logger`, optional
         Logger to use for status messages.  Defaults to the logger for
@@ -58,7 +51,7 @@ class SlackGitHubMapper:
         slack: AsyncWebClient,
         profile_field_name: str,
         *,
-        redis: redis.Redis | None = None,
+        redis_client: redis.Redis | None = None,
         logger: logging.Logger | None = None,
         slack_concurrency: int = 1,
     ) -> None:
@@ -66,7 +59,7 @@ class SlackGitHubMapper:
         self.profile_field_name = profile_field_name
         self.slack_concurrency = slack_concurrency
         self.logger = logger or logging.getLogger(__name__)
-        self.redis = redis
+        self.redis_client = redis_client
         self._profile_field_id: str | None = None
         self._slack_to_github: dict[str, str] = {}
         self._github_to_slack: dict[str, str] = {}
@@ -122,11 +115,18 @@ class SlackGitHubMapper:
         slack_to_github: dict[str, str] = {}
         github_to_slack: dict[str, str] = {}
         slack_ids = await self._get_user_list()
+        self.logger.debug(
+            f"Returned from _get_user_list with {len(slack_ids)}" " candidates"
+        )
         need_lookup: list[str] = []
 
-        if self.redis is None:
-            need_lookup = slack_ids
+        if self.redis_client is None:
+            self.logger.debug(
+                "No configured redis client; full Slack check required"
+            )
+            need_lookup = slack_ids  # We need to check everyone
         else:
+            self.logger.debug("Consulting redis to limit Slack checking")
             for sl_u in slack_ids:
                 # If the key does not exist in redis, we need to check it.
                 # This is inefficient since we are always rechecking all
@@ -142,22 +142,30 @@ class SlackGitHubMapper:
                 # about that later.  At worst we'll be spamming users who
                 # no longer care about their Jenkins jobs but then why are
                 # they running them?
-                gh_u = await self.redis.get(sl_u)
+                self.logger.debug(f"Redis lookup of Slack user {sl_u}")
+                gh_u = await self.redis_client.get(sl_u)
+                self.logger.debug(f"Lookup result {sl_u}: {gh_u}")
                 if not gh_u:
                     need_lookup.append(sl_u)
+                    self.logger.debug(
+                        f"{sl_u} not found in Redis; need Slack lookup."
+                    )
                 else:
+                    self.logger.debug(f"{sl_u} found in Redis as {gh_u}")
                     slack_to_github[sl_u] = gh_u
                     github_to_slack[gh_u] = sl_u
-                    self.logger.info(
-                        f"Checking profiles of {len(need_lookup)} Slack users"
-                    )
+            self.logger.info(
+                f"Checking profiles of {len(need_lookup)} Slack users"
+            )
         for sl_u in need_lookup:
             gh_u = await self._get_user_github(sl_u)
             if gh_u:
+                self.logger.debug(f"{sl_u} Github user in Slack -> {gh_u}")
                 slack_to_github[sl_u] = gh_u
                 github_to_slack[gh_u] = sl_u
-                if self.redis is not None:
-                    await self.redis.set(sl_u, gh_u)
+                if self.redis_client is not None:
+                    self.logger.debug(f"Storing {sl_u} -> {gh_u} in Redis")
+                    await self.redis_client.set(sl_u, gh_u)
 
         # Replace the cached data.
         async with self._lock:
@@ -214,10 +222,10 @@ class SlackGitHubMapper:
                 if "id" not in user:
                     continue
                 if user.get("is_bot", False) or user.get("is_app_user", False):
-                    self.logger.info("Skipping bot or app user %s", user["id"])
+                    self.logger.info(f"Skipping bot or app user {user['id']}")
                 else:
                     slack_ids.append(user["id"])
-        self.logger.info("Found %d Slack users", len(slack_ids))
+        self.logger.info(f"Found {len(slack_ids)} Slack users")
         return slack_ids
 
     async def _get_user_github(self, slack_id: str) -> str | None:
@@ -235,6 +243,7 @@ class SlackGitHubMapper:
             IDs are forced to lowercase since GitHub is case-insensitive.
         """
         response = await self._get_user_profile_from_slack(slack_id)
+        self.logger.debug(f"***\n_get_user_profile -> {response}\n***")
         profile = response["profile"]
         if not profile:
             return None
