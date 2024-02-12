@@ -17,6 +17,21 @@ from slack_sdk.web.async_slack_response import AsyncSlackResponse
 __all__ = ["SlackGitHubMapper", "UnknownFieldError"]
 
 
+def _stringify_list(inp: list[bytes | str | None]) -> list[str]:
+    return [_stringify_item(item) for item in inp]
+
+
+def _stringify_item(inp: bytes | str | None) -> str:
+    if isinstance(inp, str):
+        return inp
+    elif isinstance(inp, bytes):
+        return inp.decode()
+    elif inp is None:
+        return ""
+    else:
+        return f"{inp!r}"  # type:ignore[unreachable]
+
+
 class UnknownFieldError(Exception):
     """The expected Slack profile field is not defined."""
 
@@ -112,38 +127,33 @@ class SlackGitHubMapper:
                 " obviously post-startup"
             )
             return
-        # Get the list of users and then their profile data.
-        slack_ids = await self._get_user_list()
-        self.logger.debug(
-            f"Returned from _get_user_list with {len(slack_ids)} candidates"
-        )
-        slack_to_github: dict[str, str] = {}
-        github_to_slack: dict[str, str] = {}
-        self.logger.debug("Consulting redis to build initial map")
-        for sl_u in slack_ids:
-            # If we have any of this information in Redis, load it.
-            # It's all subject to change during refresh, but this information
-            # changes slowly, so the idea is, we start up with our cache,
-            # which is probably mostly correct, and let the refresh task
-            # scheduled by our context dependency deal with updates.
-            #
-            # If this comes back empty, we don't have a redis cache, so we
-            # will delay startup until we have done the first refresh.
-            self.logger.debug(f"Redis lookup of Slack user {sl_u}")
-            gh_u = await self.redis_client.get(sl_u)
-            self.logger.debug(f"Lookup result {sl_u}: {gh_u}")
-            if not gh_u:
-                self.logger.debug(f"{sl_u} not found in redis")
-            else:
-                self.logger.debug(f"{sl_u} found in redis as {gh_u}")
-                slack_to_github[sl_u] = gh_u
-                github_to_slack[gh_u] = sl_u
-        if not slack_to_github:
+        # Populate from Redis
+        redis_ids = [
+            x for x in _stringify_list(await self.redis_client.keys()) if x
+        ]
+        if not redis_ids:
             self.logger.warning(
                 "No users found in redis cache; refreshing from Slack."
             )
             await self.refresh()
             return
+        self.logger.debug(
+            f"Populating initial maps with {len(redis_ids)} users from redis"
+        )
+        slack_to_github: dict[str, str] = {}
+        github_to_slack: dict[str, str] = {}
+        self.logger.debug("Consulting redis to build initial map")
+        for sl_u in redis_ids:
+            self.logger.debug(f"Redis lookup of Slack user {sl_u}")
+            gh_u = _stringify_item(await self.redis_client.get(sl_u))
+            if not gh_u:
+                self.logger.warning(f"Value of {sl_u} in redis is empty")
+                continue
+            self.logger.debug(f"Lookup result {sl_u}: {gh_u}")
+            slack_to_github[sl_u] = gh_u
+            github_to_slack[gh_u] = sl_u
+
+        self.logger.debug("Initial load of user maps from redis complete")
         async with self._lock:
             self._slack_to_github = slack_to_github
             self._github_to_slack = github_to_slack
@@ -172,17 +182,23 @@ class SlackGitHubMapper:
         self.logger.debug(
             f"Returned from _get_user_list with {len(slack_ids)} candidates"
         )
-        redis_ids = await self.redis_client.keys()
+        redis_ids = [
+            x for x in _stringify_list(await self.redis_client.keys()) if x
+        ]
         self.logger.debug(f"{len(redis_ids)} users found in redis")
         for sl_u in slack_ids:
             gh_u = await self._get_user_github(sl_u)
-            r_gh_u = await self.redis_client.get(sl_u)
+            r_gh_u = _stringify_item(await self.redis_client.get(sl_u))
             if gh_u:
                 self.logger.debug(f"{sl_u} Github user in Slack -> {gh_u}")
+                if r_gh_u:
+                    self.logger.debug(
+                        f"Found redis mapping {sl_u} -> {r_gh_u}"
+                    )
                 slack_to_github[sl_u] = gh_u
                 github_to_slack[gh_u] = sl_u
                 if sl_u in redis_ids:
-                    if r_gh_u == sl_u:
+                    if r_gh_u == gh_u:
                         self.logger.debug(f"{sl_u} -> {gh_u} already in redis")
                         continue
                     self.logger.debug(
