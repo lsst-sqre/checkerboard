@@ -214,3 +214,6 @@ class MockRedisClient(Mock):
     async def delete(self, key: str) -> None:
         if key in self._map:
             del self._map[key]
+
+    async def keys(self) -> list[str]:
+        return list(self._map.keys())

@@ -133,14 +133,14 @@ class SlackGitHubMapper:
             gh_u = await self.redis_client.get(sl_u)
             self.logger.debug(f"Lookup result {sl_u}: {gh_u}")
             if not gh_u:
-                self.logger.debug(f"{sl_u} not found in Redis")
+                self.logger.debug(f"{sl_u} not found in redis")
             else:
-                self.logger.debug(f"{sl_u} found in Redis as {gh_u}")
+                self.logger.debug(f"{sl_u} found in redis as {gh_u}")
                 slack_to_github[sl_u] = gh_u
                 github_to_slack[gh_u] = sl_u
         if not slack_to_github:
             self.logger.warning(
-                "No users found in Redis cache; refreshing from Slack."
+                "No users found in redis cache; refreshing from Slack."
             )
             await self.refresh()
             return
@@ -172,26 +172,38 @@ class SlackGitHubMapper:
         self.logger.debug(
             f"Returned from _get_user_list with {len(slack_ids)} candidates"
         )
+        redis_ids = await self.redis_client.keys()
+        self.logger.debug(f"{len(redis_ids)} users found in redis")
         for sl_u in slack_ids:
             gh_u = await self._get_user_github(sl_u)
+            r_gh_u = await self.redis_client.get(sl_u)
             if gh_u:
                 self.logger.debug(f"{sl_u} Github user in Slack -> {gh_u}")
                 slack_to_github[sl_u] = gh_u
                 github_to_slack[gh_u] = sl_u
-                self.logger.debug(f"Storing {sl_u} -> {gh_u} in Redis")
+                if sl_u in redis_ids:
+                    if r_gh_u == sl_u:
+                        self.logger.debug(f"{sl_u} -> {gh_u} already in redis")
+                        continue
+                    self.logger.debug(
+                        f"{sl_u} now {gh_u}; changing from {r_gh_u} in redis"
+                    )
+                self.logger.debug(f"Storing {sl_u} -> {gh_u} in redis")
                 await self.redis_client.set(sl_u, gh_u)
-            else:
-                r_gh_u = await self.redis_client.get(sl_u)
-                if r_gh_u:
-                    # This user used to exist, but doesn't anymore.
-                    # Remove it from Redis and our internal map.
-                    await self.redis_client.delete(sl_u)
-                    async with self._lock:
-                        try:
-                            del self._slack_to_github[sl_u]
-                            del self._github_to_slack[r_gh_u]
-                        except (NameError, KeyError):
-                            pass
+            elif r_gh_u:
+                # This user used to exist, but doesn't anymore.
+                # Remove it from Redis and our internal map.
+                self.logger.debug(
+                    f"{sl_u} no longer mapped in GitHub; removing {r_gh_u}"
+                    " mapping from redis"
+                )
+                await self.redis_client.delete(sl_u)
+                async with self._lock:
+                    try:
+                        del self._slack_to_github[sl_u]
+                        del self._github_to_slack[r_gh_u]
+                    except (NameError, KeyError):
+                        pass
         # Replace the cached data.
         async with self._lock:
             self._slack_to_github.update(slack_to_github)
