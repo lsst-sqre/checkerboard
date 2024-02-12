@@ -41,6 +41,14 @@ async def test_refresh_interval() -> None:
         # Add another user and wait for 2 seconds, which is the refresh
         # interval.
         slack.add_user("U2", "otheruser")
+        # Make sure it's not there yet; this is racy but hopefully fast enough
+        # that it always passes.
+        response = await client.get("/checkerboard/slack")
+        assert response.status_code == 200
+        data = response.json()
+        assert data == {"U1": "githubuser"}
+
+        # Wait for refresh.
         await asyncio.sleep(2)
 
         response = await client.get("/checkerboard/slack")
