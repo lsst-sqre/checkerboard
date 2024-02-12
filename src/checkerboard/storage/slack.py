@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import time
 from random import SystemRandom
 from typing import Any
 
@@ -198,6 +199,25 @@ class SlackGitHubMapper:
 
         length = len(self._slack_to_github)
         self.logger.info(f"Refreshed GitHub map from Slack ({length} entries)")
+
+    async def periodic_refresh(self, interval: int = 3600) -> None:
+        """Refresh the Slack <-> GitHub identity mapper.
+
+        This runs as an infinite loop and is meant to be spawned as an
+        asyncio Task and cancelled when the application is shut down.
+        """
+        while True:
+            start = time.time()
+            self.logger.debug(f"Periodic refresh (each {interval} s)")
+            await self.refresh()
+            now = time.time()
+            elapsed = now - start
+            self.logger.debug(f"Refresh finished after {elapsed} s")
+            if elapsed < interval:
+                self.logger.debug(
+                    f"Refresh loop waiting for {interval - elapsed} s"
+                )
+                await asyncio.sleep(interval - elapsed)
 
     async def map(self) -> dict[str, str]:
         return self._slack_to_github

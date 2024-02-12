@@ -1,7 +1,6 @@
 """Create Checkerboard components."""
 
 import asyncio
-import time
 from collections.abc import AsyncIterator
 from contextlib import aclosing, asynccontextmanager, suppress
 from dataclasses import dataclass
@@ -115,22 +114,8 @@ class ProcessContext:
     async def create_mapper_refresh_task(self) -> None:
         """Spawn a background task to refresh the Slack <-> GitHub mapper."""
         self.refresh_task = asyncio.create_task(
-            self._mapper_periodic_refresh()
+            self.mapper.periodic_refresh(interval=self.config.refresh_interval)
         )
-
-    async def _mapper_periodic_refresh(self) -> None:
-        """Refresh the Slack <-> GitHub identity mapper.
-
-        This runs as an infinite loop and is meant to be spawned as an
-        asyncio Task and cancelled when the application is shut down.
-        """
-        interval = self.config.refresh_interval
-        while True:
-            start = time.time()
-            await self.mapper.refresh()
-            now = time.time()
-            if start + interval > now:
-                await asyncio.sleep(interval - (now - start))
 
 
 class Factory:
