@@ -4,17 +4,9 @@ from fastapi import status
 from safir.fastapi import ClientRequestError
 
 __all__ = [
-    "AuthenticationError",
     "UnknownSlackUserError",
     "UnknownGitHubUserError",
 ]
-
-
-class AuthenticationError(ClientRequestError):
-    """Username and/or password are wrong."""
-
-    error = "authentication_error"
-    status_code = status.HTTP_401_UNAUTHORIZED
 
 
 class UnknownSlackUserError(ClientRequestError):

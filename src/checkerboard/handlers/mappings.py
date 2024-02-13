@@ -8,7 +8,6 @@ from fastapi import APIRouter, Depends
 
 from checkerboard.exceptions import UnknownSlackUserError
 
-from ..dependencies.auth import auth_dependency
 from ..dependencies.context import RequestContext, context_dependency
 
 router = APIRouter()
@@ -16,9 +15,7 @@ router = APIRouter()
 
 @router.get("/slack")
 async def get_slack_mappings(
-    context: Annotated[
-        RequestContext, Depends(context_dependency), Depends(auth_dependency)
-    ],
+    context: Annotated[RequestContext, Depends(context_dependency)],
 ) -> dict[str, str]:
     """GET full map of Slack users to GitHub identities.
 
@@ -32,9 +29,7 @@ async def get_slack_mappings(
 @router.get("/slack/{slack_id}")
 async def get_user_mapping_by_slack(
     slack_id: str,
-    context: Annotated[
-        RequestContext, Depends(context_dependency), Depends(auth_dependency)
-    ],
+    context: Annotated[RequestContext, Depends(context_dependency)],
 ) -> dict[str, str]:
     """GET map for a single user by Slack ID.
 
@@ -52,9 +47,7 @@ async def get_user_mapping_by_slack(
 @router.get("/github/{github_id}")
 async def get_user_mapping_by_github(
     github_id: str,
-    context: Annotated[
-        RequestContext, Depends(context_dependency), Depends(auth_dependency)
-    ],
+    context: Annotated[RequestContext, Depends(context_dependency)],
 ) -> dict[str, str]:
     """GET map for a single user by GitHub user.
 

@@ -16,17 +16,11 @@ from slack_sdk.http_retry.async_handler import AsyncRetryHandler
 from slack_sdk.web.async_client import AsyncWebClient
 from slack_sdk.web.async_slack_response import AsyncSlackResponse
 
-from checkerboard.dependencies.config import config_dependency
-
 
 def get_http_client(app: FastAPI) -> AsyncClient:
     return AsyncClient(
         app=app,
         base_url="https://example.com",
-        auth=(
-            config_dependency.config().username,
-            config_dependency.config().password,
-        ),
         follow_redirects=True,
     )
 

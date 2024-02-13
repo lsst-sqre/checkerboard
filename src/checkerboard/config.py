@@ -79,24 +79,6 @@ class Configuration(CamelCaseModel):
         ),
     )
 
-    username: str = Field(
-        os.getenv("CHECKERBOARD_USERNAME", "checkerboard"),
-        title="Username for HTTP Basic Authentication",
-        description=(
-            "Expected username for HTTP Basic Authentication.  Set with the"
-            " ``CHECKERBOARD_USERNAME`` environment variable."
-        ),
-    )
-
-    password: str = Field(
-        os.getenv("CHECKERBOARD_PASSWORD", ""),
-        title="Password for HTTP Basic Authentication",
-        description=(
-            "Expected password for HTTP Basic Authentication.  Set with the"
-            " ``CHECKERBOARD_PASSWORD`` environment variable."
-        ),
-    )
-
     redis_password: str = Field(
         os.getenv("CHECKERBOARD_REDIS_PASSWORD", ""),
         title="Password for Checkerboard to authenticate to its Redis",
@@ -111,6 +93,6 @@ class Configuration(CamelCaseModel):
         title="URL for Checkerboard's Redis",
         description=(
             "URL for Checkerboard's Redis.  Set with the"
-            " ``CHECKERBOARD_REDIS_PASSWORD`` environment variable."
+            " ``CHECKERBOARD_REDIS_URL`` environment variable."
         ),
     )
