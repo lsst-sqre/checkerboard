@@ -1,9 +1,9 @@
 """Create Checkerboard components."""
 
 import asyncio
+import logging
 from collections.abc import AsyncIterator
 from contextlib import aclosing, asynccontextmanager, suppress
-from dataclasses import dataclass
 from typing import Self
 
 import redis.asyncio as redis
@@ -16,65 +16,56 @@ from structlog import get_logger
 from structlog.stdlib import BoundLogger
 
 from .config import Configuration
+from .service.mapper import Mapper
+from .storage.redis import MappingCache
 from .storage.slack import SlackGitHubMapper
 
 
-@dataclass
 class ProcessContext:
     """Per-process application context.
 
     This object caches all of the per-process singletons that can be
-    shared across requests.  That's basically just the configuration,
-    the name mapping, and the task to do periodic refresh of the
-    mapping.
-
-
-    Parameters
-    ----------
-    config
-        Checkerboard configuration.
-    slack
-        Configured Slack AsyncWebClient (optional).  If set, the
-        AsyncWebClient must already have the authentication token set.
-        If not, the AsyncWebClient will be created from the auth token in
-        the configuration.
-    redis_client
-        Configured Redis async client (optional).  If not set, the redis
-        client will be created from the redis url and password in the
-        configuration.
+    shared across requests.  That's basically the configuration, the
+    slack-to-github storage object, the redis storage object, and a task
+    to hold the periodic refresh loop.
     """
 
-    config: Configuration
-    """Checkerboard configuration."""
-
-    client: AsyncWebClient
-    """Slack Client."""
-
-    mapper: SlackGitHubMapper
-    """Object holding map between Slack users and GitHub accounts."""
-
-    redis_client: redis.Redis | None = None
-    """Client for communication with Checkerboard's redis."""
-
-    refresh_task: asyncio.Task | None = None
-    """Task to periodically refresh user map."""
-
-    @classmethod
-    async def from_config(
-        cls,
+    def __init__(
+        self,
         config: Configuration,
-        slack: AsyncWebClient | None = None,
-        redis_client: redis.Redis | None = None,
-    ) -> Self:
-        """Create a new process context from Checkerboard configuration."""
-        configure_logging(
-            profile=config.profile,
-            log_level=config.log_level,
-            name=config.logger_name,
-        )
-        if slack is None:
-            slack = AsyncWebClient(config.slack_token)
-        slack.retry_handlers.append(
+        slack_client: AsyncWebClient | None,
+        redis_client: redis.Redis | None,
+        *,
+        logger: logging.Logger | None = None,
+    ) -> None:
+        """
+        Parameters
+        ----------
+        config : `checkerboard.Configuration`
+            Checkerboard configuration.
+        slack_client : `slack_sdk.web.client.AsyncWebClient` | None
+            Configured Slack AsyncWebClient (optional).  If set, the
+            AsyncWebClient must already have the authentication token set.
+            If not, the AsyncWebClient will be created from the auth token in
+            the configuration.
+        redis_client : `redis.asyncio.Redis` | None
+            Configured Redis async client (optional).  If not set, the redis
+            client will be created from the redis url and password in the
+            configuration.
+        logger : `logging.Logger` | None
+            Logger object.  If not set, it will be initialized from the
+            configuration.
+        """
+        if logger is None:
+            configure_logging(
+                profile=config.profile,
+                log_level=config.log_level,
+                name=config.logger_name,
+            )
+            logger = logging.getLogger(config.logger_name)
+        if slack_client is None:
+            slack_client = AsyncWebClient(config.slack_token)
+        slack_client.retry_handlers.append(
             AsyncRateLimitErrorRetryHandler(max_retry_count=5)
         )
         if redis_client is None:
@@ -84,19 +75,31 @@ class ProcessContext:
                 socket_timeout=5,
                 auto_close_connection_pool=True,
             )
-        mapper = SlackGitHubMapper(
-            slack=slack,
+        self.config = config
+        self.redis = MappingCache(redis_client=redis_client, logger=logger)
+        self.slack = SlackGitHubMapper(
+            slack_client=slack_client,
+            redis=self.redis,
             profile_field_name=config.profile_field,
-            logger=get_logger(config.logger_name),
-            redis_client=redis_client,
+            logger=logger,
         )
+        self.mapper = Mapper(slack=self.slack, redis=self.redis, logger=logger)
+        self.refresh_task: asyncio.Task | None = None
 
-        return cls(
-            config=config,
-            mapper=mapper,
-            client=slack,
-            redis_client=redis_client,
-        )
+    @classmethod
+    async def from_config(
+        cls,
+        config: Configuration,
+        slack_client: AsyncWebClient | None,
+        redis_client: redis.Redis | None,
+        *,
+        logger: logging.Logger | None = None,
+    ) -> Self:
+        """Create a new process context from Checkerboard configuration.
+
+        This is an async classmethod.
+        """
+        return cls(config, slack_client, redis_client, logger=logger)
 
     async def aclose(self) -> None:
         """Clean up a process context.
@@ -108,8 +111,7 @@ class ProcessContext:
             self.refresh_task.cancel()
             with suppress(asyncio.CancelledError):
                 await self.refresh_task
-        if self.redis_client is not None:
-            await self.redis_client.aclose()
+        await self.redis.aclose()
 
     async def create_mapper_refresh_task(self) -> None:
         """Spawn a background task to refresh the Slack <-> GitHub mapper."""
@@ -131,7 +133,10 @@ class Factory:
 
     @classmethod
     async def create(
-        cls, config: Configuration, slack: AsyncWebClient | None
+        cls,
+        config: Configuration,
+        slack_client: AsyncWebClient | None = None,
+        redis_client: redis.Redis | None = None,
     ) -> Self:
         """Create a component factory outside of a request.
 
@@ -148,9 +153,11 @@ class Factory:
         ----------
         config
             Checkerboard configuration.
-        slack
+        slack_client
             Configured Slack AsyncWebClient (optional).  If set, the
             AsyncWebClient must already have the authentication token set.
+        redis_client
+            Configured Redis asyncio client (optional).
 
         Returns
         -------
@@ -158,8 +165,14 @@ class Factory:
             Newly-created factory.  The caller must call `aclose` on the
             returned object during shutdown.
         """
-        context = await ProcessContext.from_config(config, slack)
-        logger = get_logger("checkerboard")
+        context = await ProcessContext.from_config(
+            config=config, slack_client=slack_client, redis_client=redis_client
+        )
+        logger = get_logger(
+            "checkerboard",
+            profile=config.profile,
+            log_level=config.log_level,
+        )
         return cls(context, logger)
 
     @classmethod

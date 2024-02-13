@@ -17,7 +17,11 @@ from slack_sdk.web.async_client import AsyncWebClient
 from .config import Configuration
 from .dependencies.config import config_dependency
 from .dependencies.context import context_dependency
-from .handlers import ei_router, ii_router, m_router
+from .handlers import (
+    external_index_router,
+    internal_index_router,
+    mapping_router,
+)
 
 
 def create_app(
@@ -73,8 +77,9 @@ def create_app(
         await context_dependency.initialize(config, slack, redis_client)
 
         # Now we're going to wait for the mapper to populate.  This will
-        # take 20 minutes or so if there is no redis cache.  However, if
-        # there is a redis cache, we'll start the app with what we have
+        # take roughly 10 minutes per thousand users if there is no redis
+        # cache already populated.
+        # If there is a redis cache, we'll start the app with what we have
         # and refresh in the background.
         pcontext = context_dependency.get_process_context()
         await pcontext.mapper.start()
@@ -113,10 +118,10 @@ def create_app(
 
     # Add our routes
     # Internal routes
-    app.include_router(ii_router)
+    app.include_router(internal_index_router)
     # External routes
-    app.include_router(ei_router, prefix=path_prefix)
-    app.include_router(m_router, prefix=path_prefix)
+    app.include_router(external_index_router, prefix=path_prefix)
+    app.include_router(mapping_router, prefix=path_prefix)
 
     # Add exception handlers
     app.exception_handler(ClientRequestError)(client_request_error_handler)

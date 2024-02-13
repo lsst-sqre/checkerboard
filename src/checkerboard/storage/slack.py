@@ -3,33 +3,17 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
-import time
-from random import SystemRandom
+import random
 from typing import Any
 
-import redis.asyncio as redis
 from aiohttp import ClientConnectionError
 from slack_sdk.web.async_client import AsyncWebClient
 from slack_sdk.web.async_slack_response import AsyncSlackResponse
 
+from ..storage.redis import MappingCache
+
 __all__ = ["SlackGitHubMapper", "UnknownFieldError"]
-
-
-def _stringify_list(inp: list[bytes | str | None]) -> list[str]:
-    return [_stringify_item(item) for item in inp]
-
-
-def _stringify_item(inp: bytes | str | None) -> str:
-    if isinstance(inp, str):
-        return inp
-    elif isinstance(inp, bytes):
-        return inp.decode()
-    elif inp is None:
-        return ""
-    else:
-        return f"{inp!r}"  # type:ignore[unreachable]
 
 
 class UnknownFieldError(Exception):
@@ -37,25 +21,26 @@ class UnknownFieldError(Exception):
 
 
 class SlackGitHubMapper:
-    """Bidirectional map of Slack users to GitHub users.
+    """Map Slack users to GitHub users.
 
     This class loads all Slack users from the native Slack workspace
     of the provided Slack AsyncWebClient (via the refresh method) and
-    then retrieves their curresponding GitHub username from their
-    extended profile.  It then provides methods to return all mappings
-    or to return the GitHub user for a Slack user or vice versa.
+    then retrieves their curresponding GitHub username (if any) from
+    their extended profile.  It stores this data in its associated
+    redis instance where the mapping service can retrieve it for the
+    service user.
 
-    This class is thread-safe.
-
-    Paramters
-    ---------
-    slack : `AsyncWebClient`
+    Parameters
+    ----------
+    slack_client : `AsyncWebClient`
         Slack client to use for queries.  This must already have the
         authentication token set.
+    redis : `checkerboard.services.redis.MappingCache`
+        The redis storage layer client, which is a thin wrapper over a
+        redis asyncio client that provides value canonicalization.
     profile_field_name : `str`
         The name of the custom Slack profile field that contains the GitHub
         username.
-    redis_client : `redis_asyncio.Redis`
     logger : `logging.Logger`, optional
         Logger to use for status messages.  Defaults to the logger for
         __name__.
@@ -63,104 +48,24 @@ class SlackGitHubMapper:
 
     def __init__(
         self,
-        slack: AsyncWebClient,
+        slack_client: AsyncWebClient,
+        redis: MappingCache,
         profile_field_name: str,
-        redis_client: redis.Redis,
         *,
         logger: logging.Logger | None = None,
-        slack_concurrency: int = 1,
     ) -> None:
-        self.slack = slack
-        self.profile_field_name = profile_field_name
-        self.slack_concurrency = slack_concurrency
-        self.logger = logger or logging.getLogger(__name__)
-        self.redis_client = redis_client
+        self._slack_client = slack_client
+        self._profile_field_name = profile_field_name
+        self._logger = logger or logging.getLogger(__name__)
+        self._redis = redis
         self._profile_field_id: str | None = None
-        self._slack_to_github: dict[str, str] = {}
-        self._github_to_slack: dict[str, str] = {}
-        self._lock = asyncio.Lock()
 
-    async def github_for_slack_user(self, slack_id: str) -> str | None:
-        """Return the GitHub user for a Slack user ID, if any.
-
-        Parameters
-        ----------
-        slack_id : `str`
-            The Slack user ID (not the display name or real name).
-
-        Returns
-        -------
-        github_id : `str` or `None`
-            The corresponding GitHub username coerced to lowercase, or None if
-            that Slack user does not exist or does not have a GitHub user set
-            in their profile.
-        """
-        async with self._lock:
-            return self._slack_to_github.get(slack_id)
-
-    async def json(self) -> str:
-        """Return the map of Slack users to GitHub users as JSON.
-
-        Returns
-        -------
-        json : `str`
-            JSON-encoded dict of Slack user IDs to GitHub usernames.  All
-            GitHub usernames are coerced to lowercase since GitHub is
-            case-insensitive.
-        """
-        async with self._lock:
-            return json.dumps(self._slack_to_github)
-
-    async def start(self) -> None:
-        """Run this on startup.  It tries a Redis connection in order
-        to get the cached user data.  If it finds any, it returns
-        after refreshing the internal maps; if it does not, it blocks
-        until refresh() has run once, which will presumably populate
-        those maps.
-
-        The intent is to allow us to start quickly and offer service, while
-        still doing the background map refresh to track user changes.
-        """
-        if self._slack_to_github:
-            self.logger.warning(
-                "Non-empty user map exists; returning from start() as it's"
-                " obviously post-startup"
-            )
-            return
-        # Populate from Redis
-        redis_ids = [
-            x for x in _stringify_list(await self.redis_client.keys()) if x
-        ]
-        if not redis_ids:
-            self.logger.warning(
-                "No users found in redis cache; refreshing from Slack."
-            )
-            await self.refresh()
-            return
-        self.logger.debug(
-            f"Populating initial maps with {len(redis_ids)} users from redis"
-        )
-        slack_to_github: dict[str, str] = {}
-        github_to_slack: dict[str, str] = {}
-        self.logger.debug("Consulting redis to build initial map")
-        for sl_u in redis_ids:
-            self.logger.debug(f"Redis lookup of Slack user {sl_u}")
-            gh_u = _stringify_item(await self.redis_client.get(sl_u))
-            if not gh_u:
-                self.logger.warning(f"Value of {sl_u} in redis is empty")
-                continue
-            self.logger.debug(f"Lookup result {sl_u}: {gh_u}")
-            slack_to_github[sl_u] = gh_u
-            github_to_slack[gh_u] = sl_u
-
-        self.logger.debug("Initial load of user maps from redis complete")
-        async with self._lock:
-            self._slack_to_github = slack_to_github
-            self._github_to_slack = github_to_slack
-        return
-
-    async def refresh(self) -> None:
+    async def refresh(self) -> bool:
         """Refresh the map of Slack users to GitHub users.
+
+        Returns
+        -------
+           True if the map changed, false if it did not
 
         Raises
         ------
@@ -169,135 +74,101 @@ class SlackGitHubMapper:
         UnknownFieldError
             The expected custom Slack profile field is not defined.
         """
-        self.logger.debug("Initiating map refresh")
-        slack_to_github: dict[str, str] = {}
-        github_to_slack: dict[str, str] = {}
+        self._logger.debug("Initiating map refresh")
         if not self._profile_field_id:
             self._profile_field_id = await self._get_profile_field_id(
-                self.profile_field_name
+                self._profile_field_name
             )
 
         # Get the list of users and then their profile data.
         slack_ids = await self._get_user_list()
-        self.logger.debug(
+        self._logger.debug(
             f"Returned from _get_user_list with {len(slack_ids)} candidates"
         )
-        redis_ids = [
-            x for x in _stringify_list(await self.redis_client.keys()) if x
-        ]
-        self.logger.debug(f"{len(redis_ids)} users found in redis")
-        for sl_u in slack_ids:
-            gh_u = await self._get_user_github(sl_u)
-            r_gh_u = _stringify_item(await self.redis_client.get(sl_u))
-            if gh_u:
-                self.logger.debug(f"{sl_u} Github user in Slack -> {gh_u}")
-                if r_gh_u:
-                    self.logger.debug(
-                        f"Found redis mapping {sl_u} -> {r_gh_u}"
+        redis_ids = await self._redis.keys()
+        self._logger.debug(f"{len(redis_ids)} users found in redis")
+        updated_users = 0
+        for slack_user in slack_ids:
+            github_user = await self._get_user_github(slack_user)
+            redis_github_user = await self._redis.get(slack_user)
+            if github_user:
+                self._logger.debug(
+                    f"Slack user {slack_user} -> Github user {github_user}"
+                )
+                if redis_github_user:
+                    self._logger.debug(
+                        f"Found redis mapping {slack_user} ->"
+                        f" {redis_github_user}"
                     )
-                slack_to_github[sl_u] = gh_u
-                github_to_slack[gh_u] = sl_u
-                if sl_u in redis_ids:
-                    if r_gh_u == gh_u:
-                        self.logger.debug(f"{sl_u} -> {gh_u} already in redis")
+                if slack_user in redis_ids:
+                    if redis_github_user == github_user:
+                        self._logger.debug(
+                            f"{slack_user} -> {github_user} already in redis"
+                        )
                         continue
-                    self.logger.debug(
-                        f"{sl_u} now {gh_u}; changing from {r_gh_u} in redis"
+                    self._logger.debug(
+                        f"{slack_user} now {github_user}; changing from"
+                        f" {redis_github_user} in redis"
                     )
-                self.logger.debug(f"Storing {sl_u} -> {gh_u} in redis")
-                await self.redis_client.set(sl_u, gh_u)
-            elif r_gh_u:
+                self._logger.debug(
+                    f"Storing {slack_user} -> {github_user} in redis"
+                )
+                await self._redis.set(slack_user, github_user)
+                updated_users += 1
+            elif redis_github_user:
                 # This user used to exist, but doesn't anymore.
                 # Remove it from Redis and our internal map.
-                self.logger.debug(
-                    f"{sl_u} no longer mapped in GitHub; removing {r_gh_u}"
-                    " mapping from redis"
+                self._logger.debug(
+                    f"{slack_user} no longer mapped in GitHub; removing"
+                    f" {redis_github_user} mapping from redis"
                 )
-                await self.redis_client.delete(sl_u)
-                async with self._lock:
-                    try:
-                        del self._slack_to_github[sl_u]
-                        del self._github_to_slack[r_gh_u]
-                    except (NameError, KeyError):
-                        pass
-        # Replace the cached data.
-        async with self._lock:
-            self._slack_to_github.update(slack_to_github)
-            self._github_to_slack.update(github_to_slack)
-
-        length = len(self._slack_to_github)
-        self.logger.info(f"Refreshed GitHub map from Slack ({length} entries)")
-
-    async def periodic_refresh(self, interval: int = 3600) -> None:
-        """Refresh the Slack <-> GitHub identity mapper.
-
-        This runs as an infinite loop and is meant to be spawned as an
-        asyncio Task and cancelled when the application is shut down.
-        """
-        while True:
-            start = time.time()
-            self.logger.debug(f"Periodic refresh (each {interval} s)")
-            await self.refresh()
-            now = time.time()
-            elapsed = now - start
-            self.logger.debug(f"Refresh finished after {elapsed} s")
-            if elapsed < interval:
-                self.logger.debug(
-                    f"Refresh loop waiting for {interval - elapsed} s"
-                )
-                await asyncio.sleep(interval - elapsed)
-
-    async def map(self) -> dict[str, str]:
-        return self._slack_to_github
-
-    async def slack_for_github_user(self, github_id: str) -> str | None:
-        """Return the Slack user ID for a GitHub user, if any.
-
-        Parameters
-        ----------
-        github_id : `str`
-            A GitHub username (not case-sensitive).
-
-        Returns
-        -------
-        slack : `str` or `None`
-            The corresponding Slack user ID (not the display name or real
-            name), or None if no Slack users have that GitHub user set in
-            their profile.
-        """
-        async with self._lock:
-            return self._github_to_slack.get(github_id.lower())
+                await self._redis.delete(slack_user)
+                updated_users += 1
+        # Replace the cached data if necessary
+        changed = updated_users != 0
+        if changed:
+            self._logger.info(
+                f"Refreshed GitHub map from Slack; {updated_users}"
+                " users changed"
+            )
+        else:
+            self._logger.info(
+                "Refreshed GitHub map from Slack; it was unchanged"
+            )
+        return changed
 
     async def _get_profile_field_id(self, name: str) -> str:
         """Get the Slack field ID for a custom profile field."""
-        self.logger.info(f"Getting field ID for {name} profile field")
-        response = await self.slack.team_profile_get()
+        self._logger.info(f'Getting field ID for "{name}" profile field')
+        response = await self._slack_client.team_profile_get()
         profile: dict[str, Any] = response.get("profile", {})
         fields: list[dict[str, Any]] = profile.get("fields", [])
         for custom_field in fields:
             if custom_field.get("label") == name and "id" in custom_field:
                 field_id = custom_field["id"]
-                self.logger.info(f"Field ID for {name} is {field_id}")
+                self._logger.info(f"Field ID for {name} is {field_id}")
                 return field_id
 
         # The custom profile field we were expecting is not defined.
-        raise UnknownFieldError(f"Slack custom profile field {name} not found")
+        raise UnknownFieldError(
+            f'Slack custom profile field "{name}" not found'
+        )
 
     async def _get_user_list(self) -> list[str]:
         """Return a list of Slack user IDs."""
         slack_ids: list[str] = []
         count: int = 0
-        async for page in await self.slack.users_list(limit=1000):
+        async for page in await self._slack_client.users_list(limit=1000):
             count += 1
-            self.logger.info(f"Listing Slack users (batch {count})")
+            self._logger.info(f"Listing Slack users (batch {count})")
             for user in page["members"]:
                 if "id" not in user:
                     continue
                 if user.get("is_bot", False) or user.get("is_app_user", False):
-                    self.logger.info(f"Skipping bot or app user {user['id']}")
+                    self._logger.info(f"Skipping bot or app user {user['id']}")
                 else:
                     slack_ids.append(user["id"])
-        self.logger.info(f"Found {len(slack_ids)} Slack users")
+        self._logger.info(f"Found {len(slack_ids)} Slack users")
         return slack_ids
 
     async def _get_user_github(self, slack_id: str) -> str | None:
@@ -324,13 +195,13 @@ class SlackGitHubMapper:
             github_id = profile["fields"][self._profile_field_id]["value"]
             github_id = github_id.lower()
         except (KeyError, TypeError):
-            self.logger.debug(
+            self._logger.debug(
                 f"No GitHub user found for Slack user {slack_id}"
                 f" ({display_name})"
             )
             return None
 
-        self.logger.debug(
+        self._logger.debug(
             f"Slack user {slack_id} ({display_name}) ->"
             f" GitHub user {github_id}"
         )
@@ -344,7 +215,9 @@ class SlackGitHubMapper:
         retries = 0
         while True:
             try:
-                return await self.slack.users_profile_get(user=slack_id)
+                return await self._slack_client.users_profile_get(
+                    user=slack_id
+                )
             except ClientConnectionError:
                 if retries >= max_retries:
                     raise
@@ -352,7 +225,10 @@ class SlackGitHubMapper:
                 retries += 1
 
     async def _random_delay(self, reason: str) -> None:
-        """Delay for a random period between 2 and 5 seconds."""
-        delay = SystemRandom().randrange(2, 5)
-        self.logger.warning(f"{reason}, sleeping for {delay} seconds")
+        """Delay for a random period between 2 and 5 (integral) seconds
+        inclusive.
+        """
+        # This really doesn't need to be cryptographically secure.
+        delay = random.randrange(2, 6)  # noqa: S311
+        self._logger.warning(f"{reason}, sleeping for {delay} seconds")
         await asyncio.sleep(delay)

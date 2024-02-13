@@ -1,5 +1,5 @@
-__all__ = ["ei_router", "ii_router", "m_router"]
+__all__ = ["external_index_router", "internal_index_router", "mapping_router"]
 
-from .external_index import router as ei_router
-from .internal_index import router as ii_router
-from .mappings import router as m_router
+from .external_index import router as external_index_router
+from .internal_index import router as internal_index_router
+from .mappings import router as mapping_router

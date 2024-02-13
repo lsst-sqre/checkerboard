@@ -5,7 +5,7 @@ Currently, only mapping between Slack users and GitHub users is supported.
 Slack users are associated with GitHub users via a custom field in the Slack profile.
 The default field name is "GitHub Username".
 
-This is an Rubin Observatory DM SQuaRE api.lsst.codes microservice, developed with the [Safir](https://safir.lsst.io) framework.
+This is an Rubin Observatory DM SQuaRE Roundtable microservice, developed with the [Safir](https://safir.lsst.io) framework.
 
 ## Usage
 
@@ -34,7 +34,6 @@ The following environment variables may optionally be set to change default beha
     The default is 3600 (one hour).
 
 ## Routes
-------
 
 Checkerboard has a `/` health-check route exposing metadata; `/checkerboard/` gives the same data under the `_metadata` key.  This does not require authentication.
 
