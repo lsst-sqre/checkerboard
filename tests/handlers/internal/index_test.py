@@ -1,30 +1,26 @@
 """Tests for the checkerboard.handlers.internal.index module and routes."""
 
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
 import pytest
+from asgi_lifespan import LifespanManager
 
-from checkerboard.app import create_app
-from tests.util import MockSlackClient
-
-if TYPE_CHECKING:
-    from aiohttp.pytest_plugin.test_utils import TestClient
+from checkerboard.dependencies.config import config_dependency
+from checkerboard.main import create_app
+from tests.util import MockRedisClient, MockSlackClient, get_http_client
 
 
 @pytest.mark.asyncio
-async def test_get_index(aiohttp_client: TestClient) -> None:
-    """Test GET /"""
+async def test_get_index() -> None:
+    """Test GET / ."""
     slack = MockSlackClient()
-    app = await create_app(slack=slack)
-    client = await aiohttp_client(app)
+    redis_client = MockRedisClient()
+    app = create_app(slack_client=slack, redis_client=redis_client)
+    async with LifespanManager(app):
+        client = get_http_client(app)
 
-    response = await client.get("/")
-    assert response.status == 200
-    data = await response.json()
-    assert data["name"] == app["safir/config"].name
-    assert isinstance(data["version"], str)
-    assert isinstance(data["description"], str)
-    assert isinstance(data["repository_url"], str)
-    assert isinstance(data["documentation_url"], str)
+        response = await client.get("/")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["name"] == config_dependency.config().name
+        assert isinstance(data["version"], str)
+        assert isinstance(data["description"], str)
+        assert isinstance(data["repository_url"], str)

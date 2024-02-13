@@ -5,11 +5,17 @@
 # After editing, update requirements/main.txt by running:
 #     make update-deps
 
+# FastAPI and friends
+fastapi
+uvicorn[standard]
+
 aiodns
-aiohttp
-aiohttp-basicauth-middleware
+
 chardet
 click
-safir<2
-slackclient[optional]
+pydantic
+redis
+safir
+slack_sdk
+aiohttp  # Needed by slack_sdk
 structlog

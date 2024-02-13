@@ -64,4 +64,6 @@ USER appuser
 
 EXPOSE 8080
 
-ENTRYPOINT ["checkerboard", "run", "--port", "8080"]
+COPY scripts/start.sh /start.sh
+
+CMD ["/start.sh"]

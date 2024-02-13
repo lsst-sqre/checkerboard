@@ -1,26 +1,32 @@
-"""Tests for the checkerboard.slack module."""
+"""Tests for the checkerboard.storage.slack module."""
 
 from __future__ import annotations
 
 import asyncio
-import json
-from typing import TYPE_CHECKING
+from typing import Any
 from unittest.mock import patch
 
 import pytest
 
-from checkerboard.slack import SlackGitHubMapper, UnknownFieldError
-from tests.util import MockSlackClient, MockSlackClientWithFailures
-
-if TYPE_CHECKING:
-    from typing import Any, Dict, List
+from checkerboard.service.mapper import Mapper
+from checkerboard.storage.redis import MappingCache
+from checkerboard.storage.slack import SlackGitHubMapper, UnknownFieldError
+from tests.util import (
+    MockRedisClient,
+    MockSlackClient,
+    MockSlackClientWithFailures,
+)
 
 
 @pytest.mark.asyncio
 async def test_mapper() -> None:
     """Tests of the mapper, primarily around data parsing and robustness."""
     slack = MockSlackClient()
-    mapper = SlackGitHubMapper(slack, "GitHub Username")
+    redis = MappingCache(redis_client=MockRedisClient())
+    slack_mapper = SlackGitHubMapper(
+        slack_client=slack, redis=redis, profile_field_name="GitHub Username"
+    )
+    service = Mapper(slack=slack_mapper, redis=redis)
 
     # Add some users with and without GitHub username mappings.
     slack.add_user("U1", "githubuser")
@@ -89,23 +95,25 @@ async def test_mapper() -> None:
         "UX4", {}, {"display_name_normalized": "foo", "fields": {}}
     )
 
-    # Now, run refresh.  This will test both handling of invalid users and
-    # pagination, since these will be returned in two groups.
-    await mapper.refresh()
+    # Now, run refresh.  This will test handling of invalid users.
+    # Pagination is now the real slack client's problem, not ours, so we
+    # don't do any cursor checking.
+    await slack_mapper.refresh()
+    await service.refresh()
 
     # Check that the resulting mapping is correct for valid users.
-    assert await mapper.github_for_slack_user("U1") == "githubuser"
-    assert await mapper.github_for_slack_user("U2") == "otheruser"
-    assert await mapper.github_for_slack_user("UNA") == "no-app"
-    assert await mapper.github_for_slack_user("UNB") == "no-bot"
-    assert await mapper.github_for_slack_user("UNN") == "no-name"
+    assert await service.github_for_slack_user("U1") == "githubuser"
+    assert await service.github_for_slack_user("U2") == "otheruser"
+    assert await service.github_for_slack_user("UNA") == "no-app"
+    assert await service.github_for_slack_user("UNB") == "no-bot"
+    assert await service.github_for_slack_user("UNN") == "no-name"
 
     # Check the inverse mappings and case insensitivity.
-    assert await mapper.slack_for_github_user("GITHUBUSER") == "U1"
-    assert await mapper.slack_for_github_user("otheruser") == "U2"
-    assert await mapper.slack_for_github_user("NO-app") == "UNA"
-    assert await mapper.slack_for_github_user("no-bot") == "UNB"
-    assert await mapper.slack_for_github_user("no-name") == "UNN"
+    assert await service.slack_for_github_user("GITHUBUSER") == "U1"
+    assert await service.slack_for_github_user("otheruser") == "U2"
+    assert await service.slack_for_github_user("NO-app") == "UNA"
+    assert await service.slack_for_github_user("no-bot") == "UNB"
+    assert await service.slack_for_github_user("no-name") == "UNN"
 
     # Check that all the other users don't exist.
     for user in (
@@ -123,12 +131,12 @@ async def test_mapper() -> None:
         "UX3",
         "UX4",
     ):
-        assert not await mapper.github_for_slack_user(user)
-        assert not await mapper.slack_for_github_user(user)
+        assert not await service.github_for_slack_user(user)
+        assert not await service.slack_for_github_user(user)
 
     # Check that the full mapping returns the correct list.
-    full_map_json = await mapper.json()
-    assert json.loads(full_map_json) == {
+    full_map = await service.map()
+    assert full_map == {
         "U1": "githubuser",
         "U2": "otheruser",
         "UNA": "no-app",
@@ -141,9 +149,13 @@ async def test_mapper() -> None:
 async def test_invalid_profile_field() -> None:
     """Test handling of invalid or missing custom profile fields."""
     slack = MockSlackClient()
-    mapper = SlackGitHubMapper(slack, "Other Field")
+    slack.add_user("U1", "githubuser")
+    redis = MappingCache(redis_client=MockRedisClient())
+    slack_mapper = SlackGitHubMapper(
+        slack_client=slack, redis=redis, profile_field_name="Other Field"
+    )
     with pytest.raises(UnknownFieldError):
-        await mapper.refresh()
+        await slack_mapper.refresh()
 
     # Test with multiple team profile custom fields, including the one we care
     # about.
@@ -156,15 +168,21 @@ async def test_invalid_profile_field() -> None:
             ]
         }
     }
+
     slack = MockSlackClient(team_profile=team_profile)
     slack.add_user("U1", "githubuser")
-    mapper = SlackGitHubMapper(slack, "GitHub Username")
-    await mapper.refresh()
-    assert await mapper.github_for_slack_user("U1") == "githubuser"
+    redis = MappingCache(redis_client=MockRedisClient())
+    slack_mapper = SlackGitHubMapper(
+        slack_client=slack, redis=redis, profile_field_name="GitHub Username"
+    )
+    service = Mapper(slack=slack_mapper, redis=redis)
+    await slack_mapper.refresh()
+    await service.refresh()
+    assert await service.github_for_slack_user("U1") == "githubuser"
 
     # Try a variety of invalid team profile data structures or ones where the
     # field we care about is missing.
-    test_profiles: List[Dict[str, Any]] = [
+    test_profiles: list[dict[str, Any]] = [
         {},
         {"foo": "bar"},
         {"profile": {}},
@@ -175,14 +193,19 @@ async def test_invalid_profile_field() -> None:
     ]
     for team_profile in test_profiles:
         slack = MockSlackClient(team_profile=team_profile)
-        mapper = SlackGitHubMapper(slack, "GitHub Username")
+        redis = MappingCache(redis_client=MockRedisClient())
+        slack_mapper = SlackGitHubMapper(
+            slack_client=slack,
+            redis=redis,
+            profile_field_name="GitHub Username",
+        )
         with pytest.raises(UnknownFieldError):
-            await mapper.refresh()
+            await slack_mapper.refresh()
 
 
 @pytest.mark.asyncio
 async def test_backoff() -> None:
-    """Test backoff and retry on errors and rate limiting."""
+    """Test backoff and retry on errors."""
     slack = MockSlackClientWithFailures()
     slack.add_user("U1", "githubuser")
     slack.add_user("U2", "otheruser")
@@ -192,16 +215,23 @@ async def test_backoff() -> None:
     # gotten two retriable failures from MockSlackClientWithFailures.
     #
     # AsyncMock was introduced in Python 3.8, so sadly we can't use it yet.
-    mapper = SlackGitHubMapper(slack, "GitHub Username")
+    #
+    # Well, now we could, but this works just fine.
+    redis = MappingCache(redis_client=MockRedisClient())
+    slack_mapper = SlackGitHubMapper(
+        slack_client=slack, redis=redis, profile_field_name="GitHub Username"
+    )
+    service = Mapper(slack=slack_mapper, redis=redis)
     with patch("asyncio.sleep") as sleep:
         sleep.return_value = asyncio.Future()
         sleep.return_value.set_result(None)
-        await mapper.refresh()
+        await slack_mapper.refresh()
         assert sleep.call_count == 2
         for call in sleep.call_args_list:
             assert call[0][0] >= 2
             assert call[0][0] <= 5
 
+    await service.refresh()
     # Check that all the data was received and recorded properly.
-    assert await mapper.github_for_slack_user("U1") == "githubuser"
-    assert await mapper.github_for_slack_user("U2") == "otheruser"
+    assert await service.github_for_slack_user("U1") == "githubuser"
+    assert await service.github_for_slack_user("U2") == "otheruser"

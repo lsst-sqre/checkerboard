@@ -1,23 +1,19 @@
-"""Tests for the top-level checkerboard.app module logic."""
+"""Tests for the top-level checkerboard.main module logic."""
 
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING
 
 import pytest
-from aiohttp import BasicAuth
+from asgi_lifespan import LifespanManager
 
-from checkerboard.app import create_app
 from checkerboard.config import Configuration
-from tests.util import MockSlackClient
-
-if TYPE_CHECKING:
-    from aiohttp.pytest_plugin.test_utils import TestClient
+from checkerboard.main import create_app
+from tests.util import MockRedisClient, MockSlackClient, get_http_client
 
 
 @pytest.mark.asyncio
-async def test_refresh_interval(aiohttp_client: TestClient) -> None:
+async def test_refresh_interval() -> None:
     """Test spawning of a background refresh thread.
 
     This test may be time-sensitive.  It assumes the first test query will
@@ -27,24 +23,37 @@ async def test_refresh_interval(aiohttp_client: TestClient) -> None:
     """
     config = Configuration()
     config.refresh_interval = 2
-    auth = BasicAuth(config.username, config.password)
 
     slack = MockSlackClient()
     slack.add_user("U1", "githubuser")
 
-    app = await create_app(config=config, slack=slack)
-    client = await aiohttp_client(app)
+    redis_client = MockRedisClient()
 
-    response = await client.get("/checkerboard/slack", auth=auth)
-    assert response.status == 200
-    data = await response.json()
-    assert data == {"U1": "githubuser"}
+    app = create_app(
+        config=config, slack_client=slack, redis_client=redis_client
+    )
+    async with LifespanManager(app):
+        client = get_http_client(app)
 
-    # Add another user and wait for 2 seconds, which is the refresh interval.
-    slack.add_user("U2", "otheruser")
-    await asyncio.sleep(2)
+        response = await client.get("/checkerboard/slack")
+        assert response.status_code == 200
+        data = response.json()
+        assert data == {"U1": "githubuser"}
 
-    response = await client.get("/checkerboard/slack", auth=auth)
-    assert response.status == 200
-    data = await response.json()
-    assert data == {"U1": "githubuser", "U2": "otheruser"}
+        # Add another user and wait for 2 seconds, which is the refresh
+        # interval.
+        slack.add_user("U2", "otheruser")
+        # Make sure it's not there yet; this is racy but hopefully fast enough
+        # that it always passes.
+        response = await client.get("/checkerboard/slack")
+        assert response.status_code == 200
+        data = response.json()
+        assert data == {"U1": "githubuser"}
+
+        # Wait for refresh.
+        await asyncio.sleep(2)
+
+        response = await client.get("/checkerboard/slack")
+        assert response.status_code == 200
+        data = response.json()
+        assert data == {"U1": "githubuser", "U2": "otheruser"}

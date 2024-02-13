@@ -7,10 +7,17 @@
 
 -c main.txt
 
-aiohttp-devtools
+asgi-lifespan
 coverage[toml]
 mypy
 pre-commit
 pytest
-pytest-aiohttp
 pytest-asyncio
+pytest-cov
+
+# Documentation
+autodoc_pydantic
+scriv[toml]
+
+# Type hints
+types-pyyaml
