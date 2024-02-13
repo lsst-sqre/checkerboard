@@ -27,7 +27,7 @@ from .handlers import (
 def create_app(
     *,
     config: Configuration | None = None,
-    slack: AsyncWebClient | None = None,
+    slack_client: AsyncWebClient | None = None,
     redis_client: redis.Redis | None = None,
 ) -> FastAPI:
     """Create and configure the Checkerboard FastAPI application.
@@ -57,7 +57,7 @@ def create_app(
         The configuration to use.  If not provided, the default Configuration
         will be used.  This is a parameter primarily to allow for dependency
         injection by the test suite.
-    slack : `slack_sdk.web.async_client.AsyncWebClient`, optional
+    slack_client : `slack_sdk.web.async_client.AsyncWebClient`, optional
         The Slack AsyncWebClient to use.  If not provided, one will be created
         based on the application configuration.  This is a parameter primarily
         to allow for dependency injection by the test suite.
@@ -68,9 +68,9 @@ def create_app(
     """
     if not config:
         config = config_dependency.config()
-    if not slack:
-        slack = AsyncWebClient(config.slack_token)
-        slack.retry_handlers.append(
+    if not slack_client:
+        slack_client = AsyncWebClient(config.slack_token)
+        slack_client.retry_handlers.append(
             AsyncRateLimitErrorRetryHandler(max_retry_count=5)
         )
     if not redis_client:
@@ -83,7 +83,9 @@ def create_app(
 
     @asynccontextmanager
     async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
-        await context_dependency.initialize(config, slack, redis_client)
+        await context_dependency.initialize(
+            config=config, slack_client=slack_client, redis_client=redis_client
+        )
 
         # Now we're going to wait for the mapper to populate.  This will
         # take roughly 10 minutes per thousand users if there is no redis

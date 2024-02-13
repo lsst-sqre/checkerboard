@@ -18,7 +18,9 @@ async def test_get_slack_mappings() -> None:
     slack.add_user("U2", "otheruser")
     redis_client = MockRedisClient()
 
-    app = create_app(config=config, slack=slack, redis_client=redis_client)
+    app = create_app(
+        config=config, slack_client=slack, redis_client=redis_client
+    )
     async with LifespanManager(app):
         client = get_http_client(app)
 
@@ -36,7 +38,9 @@ async def test_get_user_mapping_by_slack() -> None:
 
     redis_client = MockRedisClient()
 
-    app = create_app(config=config, slack=slack, redis_client=redis_client)
+    app = create_app(
+        config=config, slack_client=slack, redis_client=redis_client
+    )
     async with LifespanManager(app):
         client = get_http_client(app)
 
@@ -68,7 +72,9 @@ async def test_get_user_mapping_by_github() -> None:
 
     redis_client = MockRedisClient()
 
-    app = create_app(config=config, slack=slack, redis_client=redis_client)
+    app = create_app(
+        config=config, slack_client=slack, redis_client=redis_client
+    )
     async with LifespanManager(app):
         client = get_http_client(app)
 

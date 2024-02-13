@@ -2,8 +2,8 @@
 
 This dependency gathers a variety of information into a single object for the
 convenience of writing request handlers.  It also provides a place to store a
-`structlog.BoundLogger` that can gather additional context during processing,
-including from dependencies.
+`structlog.stdlib.BoundLogger` that can gather additional context during
+processing, including from dependencies.
 """
 
 from dataclasses import dataclass
@@ -113,7 +113,7 @@ class ContextDependency:
     async def initialize(
         self,
         config: Configuration,
-        slack: AsyncWebClient | None = None,
+        slack_client: AsyncWebClient | None = None,
         redis_client: Redis | None = None,
     ) -> None:
         """Initialize the process-wide shared context.
@@ -127,7 +127,7 @@ class ContextDependency:
             await self._process_context.aclose()
         self._config = config
         self._process_context = await ProcessContext.from_config(
-            config, slack, redis_client
+            config, slack_client, redis_client
         )
 
     async def aclose(self) -> None:

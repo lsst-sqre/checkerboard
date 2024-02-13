@@ -1,12 +1,12 @@
 """Create Checkerboard components."""
 
 import asyncio
-import logging
 from collections.abc import AsyncIterator
 from contextlib import aclosing, asynccontextmanager, suppress
 from typing import Self
 
 import redis.asyncio as redis
+import structlog
 from safir.logging import configure_logging
 from slack_sdk.http_retry.builtin_async_handlers import (
     AsyncRateLimitErrorRetryHandler,
@@ -36,7 +36,7 @@ class ProcessContext:
         slack_client: AsyncWebClient | None,
         redis_client: redis.Redis | None,
         *,
-        logger: logging.Logger | None = None,
+        logger: BoundLogger | None = None,
     ) -> None:
         """
         Parameters
@@ -52,17 +52,19 @@ class ProcessContext:
             Configured Redis async client (optional).  If not set, the redis
             client will be created from the redis url and password in the
             configuration.
-        logger : `logging.Logger` | None
+        logger : `BoundLogger` | None
             Logger object.  If not set, it will be initialized from the
             configuration.
         """
+        print(f"*** {logger} ***")  # noqa: T201
         if logger is None:
             configure_logging(
                 profile=config.profile,
                 log_level=config.log_level,
                 name=config.logger_name,
             )
-            logger = logging.getLogger(config.logger_name)
+            logger = structlog.get_logger(config.logger_name)
+        print(f"*** {logger} ***")  # noqa: T201
         if slack_client is None:
             slack_client = AsyncWebClient(config.slack_token)
         slack_client.retry_handlers.append(
@@ -93,7 +95,7 @@ class ProcessContext:
         slack_client: AsyncWebClient | None,
         redis_client: redis.Redis | None,
         *,
-        logger: logging.Logger | None = None,
+        logger: BoundLogger | None = None,
     ) -> Self:
         """Create a new process context from Checkerboard configuration.
 

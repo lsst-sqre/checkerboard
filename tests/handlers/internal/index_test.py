@@ -13,7 +13,7 @@ async def test_get_index() -> None:
     """Test GET / ."""
     slack = MockSlackClient()
     redis_client = MockRedisClient()
-    app = create_app(slack=slack, redis_client=redis_client)
+    app = create_app(slack_client=slack, redis_client=redis_client)
     async with LifespanManager(app):
         client = get_http_client(app)
 

@@ -29,7 +29,9 @@ async def test_refresh_interval() -> None:
 
     redis_client = MockRedisClient()
 
-    app = create_app(config=config, slack=slack, redis_client=redis_client)
+    app = create_app(
+        config=config, slack_client=slack, redis_client=redis_client
+    )
     async with LifespanManager(app):
         client = get_http_client(app)
 

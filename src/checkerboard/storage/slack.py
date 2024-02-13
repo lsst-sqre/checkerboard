@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 import random
 from typing import Any
 
+import structlog
 from aiohttp import ClientConnectionError
 from slack_sdk.web.async_client import AsyncWebClient
 from slack_sdk.web.async_slack_response import AsyncSlackResponse
+from structlog.stdlib import BoundLogger
 
 from ..storage.redis import MappingCache
 
@@ -41,7 +42,7 @@ class SlackGitHubMapper:
     profile_field_name : `str`
         The name of the custom Slack profile field that contains the GitHub
         username.
-    logger : `logging.Logger`, optional
+    logger : `structlog.stdlib.BoundLogger`, optional
         Logger to use for status messages.  Defaults to the logger for
         __name__.
     """
@@ -52,11 +53,12 @@ class SlackGitHubMapper:
         redis: MappingCache,
         profile_field_name: str,
         *,
-        logger: logging.Logger | None = None,
+        logger: BoundLogger | None = None,
     ) -> None:
         self._slack_client = slack_client
         self._profile_field_name = profile_field_name
-        self._logger = logger or logging.getLogger(__name__)
+        print(f"*** {logger} ***")  # noqa: T201
+        self._logger = logger or structlog.get_logger(__name__)
         self._redis = redis
         self._profile_field_id: str | None = None
 
@@ -82,18 +84,23 @@ class SlackGitHubMapper:
 
         # Get the list of users and then their profile data.
         slack_ids = await self._get_user_list()
+        slack_count = len(slack_ids)
         self._logger.debug(
-            f"Returned from _get_user_list with {len(slack_ids)} candidates"
+            f"Returned from _get_user_list with {slack_count} candidates"
         )
         redis_ids = await self._redis.keys()
         self._logger.debug(f"{len(redis_ids)} users found in redis")
         updated_users = 0
+        current_user_number = 0
         for slack_user in slack_ids:
-            github_user = await self._get_user_github(slack_user)
+            current_user_number += 1
+            ctext = f"[{current_user_number}/{slack_count}]"
+            github_user = await self._get_user_github(slack_user, ctext=ctext)
             redis_github_user = await self._redis.get(slack_user)
             if github_user:
                 self._logger.debug(
                     f"Slack user {slack_user} -> Github user {github_user}"
+                    f" {ctext}"
                 )
                 if redis_github_user:
                     self._logger.debug(
@@ -120,7 +127,7 @@ class SlackGitHubMapper:
                 # Remove it from Redis and our internal map.
                 self._logger.debug(
                     f"{slack_user} no longer mapped in GitHub; removing"
-                    f" {redis_github_user} mapping from redis"
+                    f" {redis_github_user} mapping from redis {ctext}"
                 )
                 await self._redis.delete(slack_user)
                 updated_users += 1
@@ -171,13 +178,18 @@ class SlackGitHubMapper:
         self._logger.info(f"Found {len(slack_ids)} Slack users")
         return slack_ids
 
-    async def _get_user_github(self, slack_id: str) -> str | None:
+    async def _get_user_github(
+        self, slack_id: str, ctext: str | None = None
+    ) -> str | None:
         """Get the GitHub user from a given Slack ID's profile.
 
         Parameters
         ----------
         slack_id : `str`
             Slack user ID for which to get the corresponding GitHub user.
+        ctext: `str`
+            Text to append to line (optional); it should be something like
+            "[14/503]" to give a progress indicator for logging purposes.
 
         Returns
         -------
@@ -195,16 +207,22 @@ class SlackGitHubMapper:
             github_id = profile["fields"][self._profile_field_id]["value"]
             github_id = github_id.lower()
         except (KeyError, TypeError):
-            self._logger.debug(
+            msg = (
                 f"No GitHub user found for Slack user {slack_id}"
                 f" ({display_name})"
             )
+            if ctext:
+                msg += f" {ctext}"
+            self._logger.debug(msg)
             return None
 
-        self._logger.debug(
+        msg = (
             f"Slack user {slack_id} ({display_name}) ->"
             f" GitHub user {github_id}"
         )
+        if ctext:
+            msg += f" {ctext}"
+        self._logger.debug(msg)
         return github_id
 
     async def _get_user_profile_from_slack(

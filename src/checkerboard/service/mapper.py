@@ -2,9 +2,11 @@
 backed by redis and refreshed periodically from GitHub.
 """
 import asyncio
-import logging
 import time
 from dataclasses import dataclass, field
+
+import structlog
+from structlog.stdlib import BoundLogger
 
 from ..storage.redis import MappingCache
 from ..storage.slack import SlackGitHubMapper
@@ -26,11 +28,11 @@ class Mapper:
         slack: SlackGitHubMapper,
         redis: MappingCache,
         *,
-        logger: logging.Logger | None = None,
+        logger: BoundLogger | None = None,
     ) -> None:
         self._slack = slack
         self._redis = redis
-        self._logger = logger or logging.getLogger(__name__)
+        self._logger = logger or structlog.get_logger(__name__)
         self._map = UserMap()
         self._lock = asyncio.Lock()
 

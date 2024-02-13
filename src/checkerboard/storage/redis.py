@@ -4,9 +4,9 @@ This implements the Redis cache operations which, in turn, are used by the
 mapping service to answer questions about the user maps.
 """
 
-import logging
-
 import redis.asyncio as redis
+import structlog
+from structlog.stdlib import BoundLogger
 
 from ..util import stringify_item, stringify_list
 
@@ -18,10 +18,10 @@ class MappingCache:
         self,
         redis_client: redis.Redis,
         *,
-        logger: logging.Logger | None = None,
+        logger: BoundLogger | None = None,
     ) -> None:
         self._redis_client = redis_client
-        self.logger = logger or logging.getLogger(__name__)
+        self.logger = logger or structlog.get_logger(__name__)
 
     async def aclose(self) -> None:
         """Shut down cleanly."""

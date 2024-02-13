@@ -16,7 +16,9 @@ async def test_get_index() -> None:
     slack = MockSlackClient()
     redis_client = MockRedisClient()
     config = config_dependency.config()
-    app = create_app(config=config, slack=slack, redis_client=redis_client)
+    app = create_app(
+        config=config, slack_client=slack, redis_client=redis_client
+    )
     async with LifespanManager(app):
         name = config.name
         client = get_http_client(app)
