@@ -37,10 +37,19 @@ def create_app(
     particular case we don't need to have fancy middleware-dependent-on-
     configuration or anything, but we'll keep it this way for consistency.
 
-    On startup, Checkerboard will rebuild its mapping of Slack users to GitHub
-    users and will not start responding to routes (including health checks)
-    until that is done.  This will take 10-15 minutes, so set health check
-    timeouts accordingly.
+    On startup, Checkerboard will consult its redis cache for an initial
+    mapping and kick off a task to refresh the mapping periodically.
+
+    If the cache is empty, Checkerboard will wait until it has built its
+    mapping of Slack users to GitHub users the first time and will not start
+    responding to routes (including health checks) until that is done.
+
+    This takes about 10 minutes per 1000 users.  You could either set the
+    timeout accordingly, or know that the very first time you stand
+    Checkerboard up in a new environment, it will likely go into degraded
+    mode.  However, once logs indicate that the map has been built and
+    stored in Redis, you can then restart the deployment and it will
+    begin responding immediately.
 
     Parameters
     ----------
@@ -48,7 +57,7 @@ def create_app(
         The configuration to use.  If not provided, the default Configuration
         will be used.  This is a parameter primarily to allow for dependency
         injection by the test suite.
-    slack : `AsyncWebClient`, optional
+    slack : `slack_sdk.web.async_client.AsyncWebClient`, optional
         The Slack AsyncWebClient to use.  If not provided, one will be created
         based on the application configuration.  This is a parameter primarily
         to allow for dependency injection by the test suite.

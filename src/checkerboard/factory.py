@@ -43,7 +43,7 @@ class ProcessContext:
         ----------
         config : `checkerboard.Configuration`
             Checkerboard configuration.
-        slack_client : `slack_sdk.web.client.AsyncWebClient` | None
+        slack_client : `slack_sdk.web.async_client.AsyncWebClient` | None
             Configured Slack AsyncWebClient (optional).  If set, the
             AsyncWebClient must already have the authentication token set.
             If not, the AsyncWebClient will be created from the auth token in
