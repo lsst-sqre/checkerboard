@@ -665,9 +665,9 @@ safir==5.2.0 \
     --hash=sha256:93636256dbeea847d63de6d3b434c952f81d6729f6541da09bfc7823d3f61806 \
     --hash=sha256:fe8f51d00449a60544f9eccdb8e603f085fdd4f641f5d5f13cef0f29393aad3f
     # via -r requirements/main.in
-slack-sdk==3.26.2 \
-    --hash=sha256:a10e8ee69ca17d274989d0c2bbecb875f19898da3052d8d57de0898a00b1ab52 \
-    --hash=sha256:bcdac5e688fa50e9357ecd00b803b6a8bad766aa614d35d8dc0636f40adc48bf
+slack-sdk==3.27.0 \
+    --hash=sha256:811472ce598db855ab3c02f098fa430323ccb253cfe17ba20c7b05ab206d984d \
+    --hash=sha256:a901c68cb5547d5459cdefd81343d116db56d65f6b33f4081ddf1cdd243bf07e
     # via -r requirements/main.in
 sniffio==1.3.0 \
     --hash=sha256:e60305c5e5d314f5389259b7f22aaa33d8f7dee49763119234af3755c55b9101 \
@@ -698,9 +698,9 @@ uritemplate==4.1.1 \
     --hash=sha256:4346edfc5c3b79f694bccd6d6099a322bbeb628dbf2cd86eea55a456ce5124f0 \
     --hash=sha256:830c08b8d99bdd312ea4ead05994a38e8936266f84b9a7878232db50b044e02e
     # via gidgethub
-uvicorn[standard]==0.27.0.post1 \
-    --hash=sha256:4b85ba02b8a20429b9b205d015cbeb788a12da527f731811b643fd739ef90d5f \
-    --hash=sha256:54898fcd80c13ff1cd28bf77b04ec9dbd8ff60c5259b499b4b12bb0917f22907
+uvicorn[standard]==0.27.1 \
+    --hash=sha256:3d9a267296243532db80c83a959a3400502165ade2c1338dea4e67915fd4745a \
+    --hash=sha256:5c89da2f3895767472a35556e539fd59f7edbe9b1e9c0e1c99eebeadc61838e4
     # via -r requirements/main.in
 uvloop==0.19.0 \
     --hash=sha256:0246f4fd1bf2bf702e06b0d45ee91677ee5c31242f39aab4ea6fe0c51aedd0fd \
