@@ -58,7 +58,8 @@ class Mapper:
             self._logger.warning(
                 "Redis cache is empty.  Refreshing from Slack/Github."
             )
-            # Redis cache is empty.  We need a refresh.
+            # Redis cache is empty.  We need a refresh.  This will be
+            # very slow.
             await self._slack.refresh()
         await self.refresh()
 
@@ -71,7 +72,12 @@ class Mapper:
         github_to_slack: dict[str, str] = {}
         for key in slack_to_github:
             value = slack_to_github[key]
-            github_to_slack[value] = key
+            if value:
+                github_to_slack[value] = key
+            else:
+                # The mapping went away in Slack, so remove the entry from the
+                # reverse map.
+                del github_to_slack[key]
 
         async with self._lock:
             self._map.slack_to_github = slack_to_github
@@ -85,15 +91,21 @@ class Mapper:
         map: dict[str,str]
             The map of Slack users to GitHub users.  Each key is a user's
             Slack ID (not the display name or the real name), and the value
-            is the corresponding GitHub username.
+            is the corresponding GitHub username.  Note that this is the
+            map for external consumption: that is, if we have the empty
+            string as the value for a key (indicating we've asked Slack about
+            the mapping, but the Slack profile doesn't have one), we do not
+            include that key in the returned map.
         """
         async with self._lock:
-            return self._map.slack_to_github
+            return {k: v for (k, v) in self._map.slack_to_github.items() if v}
 
     async def slack_for_github_user(self, github_id: str) -> str:
         """Return the Slack user ID for a GitHub user, if any.
 
-        If the Slack
+        As with map(), this is the external-facing interface, where we don't
+        expose whether it's a user we don't know about or one we know didn't
+        exist the last time we checked.
 
         Parameters
         ----------

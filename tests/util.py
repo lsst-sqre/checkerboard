@@ -211,3 +211,6 @@ class MockRedisClient(Mock):
 
     async def keys(self) -> list[str]:
         return list(self._map.keys())
+
+    async def exists(self, key: str) -> bool:
+        return key in self._map

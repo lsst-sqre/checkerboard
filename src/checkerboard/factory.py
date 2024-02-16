@@ -64,9 +64,10 @@ class ProcessContext:
                 name=config.logger_name,
             )
             logger = structlog.get_logger(config.logger_name)
-        print(f"*** {logger} ***")  # noqa: T201
         if slack_client is None:
-            slack_client = AsyncWebClient(config.slack_token)
+            # Increase the timeout, because rate-limit retries are
+            # fairly frequent
+            slack_client = AsyncWebClient(config.slack_token, timeout=60)
         slack_client.retry_handlers.append(
             AsyncRateLimitErrorRetryHandler(max_retry_count=5)
         )

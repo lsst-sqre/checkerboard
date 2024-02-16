@@ -88,11 +88,24 @@ class SlackGitHubMapper:
         self._logger.debug(
             f"Returned from _get_user_list with {slack_count} candidates"
         )
-        redis_ids = await self._redis.keys()
-        self._logger.debug(f"{len(redis_ids)} users found in redis")
+        redis_data = await self._redis.get_all()
+        redis_ids = list(redis_data.keys())
+
+        # First thing: anyone that exists in redis but doesn't exist in Slack
+        # means they're no longer part of our Slack team, so we should
+        # purge them from redis.
+        await self._purge_redis_of_deleted_slack_users(slack_ids, redis_data)
+
+        # Because we're going to get rate limited, we want to tackle this in
+        # a particular order to minimize the time until we have answers for
+        # our callers.
+        ordered_slack_ids = self._build_ordered_slack_list(
+            slack_ids, redis_data
+        )
+
         updated_users = 0
         current_user_number = 0
-        for slack_user in slack_ids:
+        for slack_user in ordered_slack_ids:
             current_user_number += 1
             ctext = f"[{current_user_number}/{slack_count}]"
             github_user = await self._get_user_github(slack_user, ctext=ctext)
@@ -122,15 +135,21 @@ class SlackGitHubMapper:
                 )
                 await self._redis.set(slack_user, github_user)
                 updated_users += 1
-            elif redis_github_user:
-                # This user used to exist, but doesn't anymore.
-                # Remove it from Redis and our internal map.
-                self._logger.debug(
-                    f"{slack_user} no longer mapped in GitHub; removing"
-                    f" {redis_github_user} mapping from redis {ctext}"
-                )
-                await self._redis.delete(slack_user)
+            else:
+                if redis_github_user:
+                    # This user used to exist, but doesn't anymore.
+                    self._logger.debug(
+                        f"{slack_user} no longer mapped in GitHub; removing"
+                        f" {redis_github_user} mapping from redis {ctext}"
+                    )
+                # This is the distinction mentioned in the redis storage
+                # layer.  The key will exist, but with an empty-string
+                # value.  The only reason to do this is so that we can do
+                # the list ordering to ensure that we've asked Slack about
+                # everyone as soon as possible.
+                await self._redis.set(slack_user, "")
                 updated_users += 1
+
         # Replace the cached data if necessary
         changed = updated_users != 0
         if changed:
@@ -143,6 +162,58 @@ class SlackGitHubMapper:
                 "Refreshed GitHub map from Slack; it was unchanged"
             )
         return changed
+
+    async def _purge_redis_of_deleted_slack_users(
+        self, slack_ids: list[str], redis_data: dict[str, str]
+    ) -> None:
+        redis_ids = list(redis_data.keys())
+        slack_set = set(slack_ids)
+        redis_set = set(redis_ids)
+        unslacked = redis_set - slack_set
+        for removed in unslacked:
+            self._logger.warning(
+                f"User {removed} found in redis but not Slack; removing"
+            )
+            await self._redis.delete(removed)
+            del redis_data[removed]
+
+    def _build_ordered_slack_list(
+        self, slack_ids: list[str], redis_data: dict[str, str]
+    ) -> list[str]:
+        total = 0
+        mapped = 0
+        unmapped = 0
+        slack_unmapped: list[str] = []
+        slack_mapped: list[str] = []
+        for redis_user in redis_data:
+            total += 1
+            if redis_data[redis_user] == "":
+                unmapped += 1
+                slack_unmapped.append(redis_user)
+            else:
+                mapped += 1
+                slack_mapped.append(redis_user)
+        self._logger.debug(
+            f"{total} users found in redis; {mapped} have"
+            f" GitHub IDs; {unmapped} do not"
+        )
+        # First we want to look up anyone we've never
+        # tried to find a mapping for (that is, they're not in Redis).
+        #
+        # Next, we want to try all the people who didn't have mappings last
+        # time we looked, because maybe they updated their profile with
+        # the GitHub user ID.
+        #
+        # Finally, we want to go through and recheck anyone who did have a
+        # mapping, in case it changed, which is probably a rare event
+        # (maybe they had a typo, or they put a URL instead of a username, or
+        # something)
+        #
+        redis_ids = list(redis_data.keys())
+        ordered_slack_ids = list(set(slack_ids) - set(redis_ids))
+        ordered_slack_ids.extend(slack_unmapped)
+        ordered_slack_ids.extend(slack_mapped)
+        return ordered_slack_ids
 
     async def _get_profile_field_id(self, name: str) -> str:
         """Get the Slack field ID for a custom profile field."""
@@ -229,17 +300,17 @@ class SlackGitHubMapper:
         self, slack_id: str
     ) -> AsyncSlackResponse:
         """Get a user profile.  Slack client will handle rate-limiting."""
-        max_retries = 10
+        max_retries = 5
         retries = 0
         while True:
             try:
                 return await self._slack_client.users_profile_get(
                     user=slack_id
                 )
-            except ClientConnectionError:
+            except ClientConnectionError as exc:
                 if retries >= max_retries:
                     raise
-                await self._random_delay("Cannot connect to Slack")
+                await self._random_delay(f"Cannot connect to Slack: {exc}")
                 retries += 1
 
     async def _random_delay(self, reason: str) -> None:
