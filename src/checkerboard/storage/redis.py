@@ -83,8 +83,10 @@ class MappingCache:
         return None
 
     async def get_all(self) -> dict[str, str]:
-        """Get all the keys and their values as a dict.  Keys without values
-        are ignored.
+        """Get all the keys and their values as a dict.
+
+        This representation keeps keys with empty values as the empty string;
+        it is the responsibility of the caller to handle those.
 
         Returns
         -------
@@ -93,9 +95,8 @@ class MappingCache:
         retval: dict[str, str] = {}
         keys = await self.keys()
         for key in keys:
-            val = await self.get(key)
-            if val:
-                retval[key] = val
+            val = stringify_item(await self.get(key)).lower()
+            retval[key] = val
         return retval
 
     async def delete(self, key: str) -> None:

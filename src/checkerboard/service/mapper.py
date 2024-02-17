@@ -74,10 +74,6 @@ class Mapper:
             value = slack_to_github[key]
             if value:
                 github_to_slack[value] = key
-            else:
-                # The mapping went away in Slack, so remove the entry from the
-                # reverse map.
-                del github_to_slack[key]
 
         async with self._lock:
             self._map.slack_to_github = slack_to_github
