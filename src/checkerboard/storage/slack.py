@@ -131,18 +131,18 @@ class SlackGitHubMapper:
                 )
                 await self._redis.set(slack_user, github_user)
                 updated_users += 1
-            else:
-                if redis_github_user:
-                    # This user used to exist, but doesn't anymore.
-                    self._logger.debug(
-                        f"{slack_user} no longer mapped in GitHub; removing"
-                        f" {redis_github_user} mapping from redis {ctext}"
-                    )
-                # This is the distinction mentioned in the redis storage
-                # layer.  The key will exist, but with an empty-string
-                # value.  The only reason to do this is so that we can do
-                # the list ordering to ensure that we've asked Slack about
-                # everyone as soon as possible.
+            elif redis_github_user:
+                # This user used to exist, but doesn't anymore.
+                self._logger.debug(
+                    f"{slack_user} no longer mapped in GitHub; removing"
+                    f" {redis_github_user} mapping from redis {ctext}"
+                )
+                # This is the distinction mentioned in the redis
+                # storage layer.  The key will exist, but with an
+                # empty-string value.  The only reason to do this
+                # is so that we can do the list ordering to ensure
+                # that we've asked Slack about everyone as soon as
+                # possible.
                 await self._redis.set(slack_user, "")
                 updated_users += 1
 
