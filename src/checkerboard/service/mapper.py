@@ -74,10 +74,6 @@ class Mapper:
             value = slack_to_github[key]
             if value:
                 github_to_slack[value] = key
-            else:
-                # The mapping went away in Slack, so remove the entry from the
-                # reverse map.
-                del github_to_slack[key]
 
         async with self._lock:
             self._map.slack_to_github = slack_to_github
@@ -148,15 +144,16 @@ class Mapper:
         """
         while True:
             start = time.time()
-            self._logger.debug(f"Running periodic refresh (each {interval} s)")
+            self._logger.info(f"Running periodic refresh (each {interval} s)")
             changed = await self._slack.refresh()
             if changed:
                 await self.refresh()
             now = time.time()
             elapsed = now - start
-            self._logger.debug(f"Periodic refresh finished after {elapsed} s")
+            self._logger.info(f"Periodic refresh finished after {elapsed} s")
             if elapsed < interval:
-                self._logger.debug(
-                    f"Periodic refresh loop waiting for {interval - elapsed} s"
+                stall = interval - elapsed
+                self._logger.info(
+                    f"Periodic refresh loop waiting for {stall:.2f} s"
                 )
-                await asyncio.sleep(interval - elapsed)
+                await asyncio.sleep(stall)

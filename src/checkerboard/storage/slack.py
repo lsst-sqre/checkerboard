@@ -57,7 +57,6 @@ class SlackGitHubMapper:
     ) -> None:
         self._slack_client = slack_client
         self._profile_field_name = profile_field_name
-        print(f"*** {logger} ***")  # noqa: T201
         self._logger = logger or structlog.get_logger(__name__)
         self._redis = redis
         self._profile_field_id: str | None = None
@@ -76,7 +75,7 @@ class SlackGitHubMapper:
         UnknownFieldError
             The expected custom Slack profile field is not defined.
         """
-        self._logger.debug("Initiating map refresh")
+        self._logger.info("Initiating map refresh")
         if not self._profile_field_id:
             self._profile_field_id = await self._get_profile_field_id(
                 self._profile_field_name
@@ -85,9 +84,6 @@ class SlackGitHubMapper:
         # Get the list of users and then their profile data.
         slack_ids = await self._get_user_list()
         slack_count = len(slack_ids)
-        self._logger.debug(
-            f"Returned from _get_user_list with {slack_count} candidates"
-        )
         redis_data = await self._redis.get_all()
         redis_ids = list(redis_data.keys())
 
@@ -193,7 +189,7 @@ class SlackGitHubMapper:
             else:
                 mapped += 1
                 slack_mapped.append(redis_user)
-        self._logger.debug(
+        self._logger.info(
             f"{total} users found in redis; {mapped} have"
             f" GitHub IDs; {unmapped} do not"
         )
@@ -243,7 +239,9 @@ class SlackGitHubMapper:
                 if "id" not in user:
                     continue
                 if user.get("is_bot", False) or user.get("is_app_user", False):
-                    self._logger.info(f"Skipping bot or app user {user['id']}")
+                    self._logger.debug(
+                        f"Skipping bot or app user {user['id']}"
+                    )
                 else:
                     slack_ids.append(user["id"])
         self._logger.info(f"Found {len(slack_ids)} Slack users")

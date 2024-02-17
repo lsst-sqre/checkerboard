@@ -56,7 +56,6 @@ class ProcessContext:
             Logger object.  If not set, it will be initialized from the
             configuration.
         """
-        print(f"*** {logger} ***")  # noqa: T201
         if logger is None:
             configure_logging(
                 profile=config.profile,
