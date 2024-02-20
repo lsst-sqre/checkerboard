@@ -150,7 +150,9 @@ class Mapper:
                 await self.refresh()
             now = time.time()
             elapsed = now - start
-            self._logger.info(f"Periodic refresh finished after {elapsed} s")
+            self._logger.info(
+                f"Periodic refresh finished after {elapsed:.2f} s"
+            )
             if elapsed < interval:
                 stall = interval - elapsed
                 self._logger.info(
