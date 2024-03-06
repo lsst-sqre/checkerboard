@@ -60,8 +60,6 @@ class Mapper:
             )
             # Redis cache is empty.  We need a refresh.  This will be
             # very slow.
-            #
-            # Don't time this one out.
             await self._slack.refresh()
         await self.refresh()
 
@@ -138,11 +136,7 @@ class Mapper:
         async with self._lock:
             return self._map.slack_to_github.get(slack_id, "")
 
-    async def periodic_refresh(
-        self,
-        interval: int = 3600,
-        refresh_timeout: int = 9000,
-    ) -> None:
+    async def periodic_refresh(self, interval: int = 3600) -> None:
         """Refresh the Slack <-> GitHub identity mapper.
 
         This runs as an infinite loop and is meant to be spawned as an
@@ -151,21 +145,9 @@ class Mapper:
         while True:
             start = time.time()
             self._logger.info(f"Running periodic refresh (each {interval} s)")
-            self._logger.info(
-                f"Refreshing from Slack, maximum wait { refresh_timeout } s"
-            )
-            try:
-                async with asyncio.timeout(refresh_timeout):
-                    changed = await self._slack.refresh()
-                    if changed:
-                        await self.refresh()
-            except TimeoutError:
-                self._logger.warning(
-                    f"Slack refresh timed out after {refresh_timeout} s;"
-                    " retrying"
-                )
-                continue
-
+            changed = await self._slack.refresh()
+            if changed:
+                await self.refresh()
             now = time.time()
             elapsed = now - start
             self._logger.info(

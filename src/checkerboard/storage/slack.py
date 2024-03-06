@@ -300,16 +300,22 @@ class SlackGitHubMapper:
         """Get a user profile.  Slack client will handle rate-limiting."""
         max_retries = 5
         retries = 0
-        while True:
+        last_exc: ClientConnectionError | TimeoutError | None = None
+        while retries < max_retries:
             try:
-                return await self._slack_client.users_profile_get(
-                    user=slack_id
-                )
-            except ClientConnectionError as exc:
-                if retries >= max_retries:
-                    raise
+                async with asyncio.timeout(60):
+                    # I don't know why we aren't timing out already.
+                    return await self._slack_client.users_profile_get(
+                        user=slack_id
+                    )
+            except (TimeoutError, ClientConnectionError) as exc:
                 await self._random_delay(f"Cannot connect to Slack: {exc}")
+                last_exc = exc
                 retries += 1
+        if last_exc is not None:
+            raise last_exc
+        # We should not get here; it will bubble up as a 500 if we do.
+        raise RuntimeError(f"Could not get Slack profile for {slack_id}")
 
     async def _random_delay(self, reason: str) -> None:
         """Delay for a random period between 2 and 5 (integral) seconds
