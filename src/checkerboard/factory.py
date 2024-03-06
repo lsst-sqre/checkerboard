@@ -118,7 +118,10 @@ class ProcessContext:
     async def create_mapper_refresh_task(self) -> None:
         """Spawn a background task to refresh the Slack <-> GitHub mapper."""
         self.refresh_task = asyncio.create_task(
-            self.mapper.periodic_refresh(interval=self.config.refresh_interval)
+            self.mapper.periodic_refresh(
+                interval=self.config.refresh_interval,
+                refresh_timeout=self.config.refresh_timeout,
+            )
         )
 
 

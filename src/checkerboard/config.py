@@ -69,6 +69,16 @@ class Configuration(CamelCaseModel):
         ),
     )
 
+    refresh_timeout: int = Field(
+        int(os.getenv("CHECKERBOARD_REFRESH_TIMEOUT", "9000")),
+        title="Refresh interval for Slack <-> GitHub mapping update",
+        description=(
+            "If an attempt to refresh the Slack <-> GitHub mapping takes"
+            " longer than this, kill the task and restart.  Set with the"
+            " ``CHECKERBOARD_REFRESH_TIMEOUT`` environment variable."
+        ),
+    )
+
     slack_token: str = Field(
         os.getenv("CHECKERBOARD_SLACK_TOKEN", ""),
         title="Slack token used for queries",

@@ -29,8 +29,8 @@ name = "Association of Universities for Research in Astronomy, Inc. (AURA)"
 email = "sqre-admin@lists.lsst.org"
 
 [project.urls]
-Source = "https://github.com/lsst-sqre/gafaelfawr"
-"Issue tracker" = "https://github.com/lsst-sqre/gafaelfawr/issues"
+Source = "https://github.com/lsst-sqre/checkerboard"
+"Issue tracker" = "https://github.com/lsst-sqre/checkerboard/issues"
 
 [build-system]
 requires = [
