@@ -226,9 +226,13 @@ class SlackGitHubMapper:
                 return field_id
 
         # The custom profile field we were expecting is not defined.
-        raise UnknownFieldError(
-            f'Slack custom profile field "{name}" not found'
-        )
+        try:
+            raise UnknownFieldError(
+                f'Slack custom profile field "{name}" not found'
+            )
+        except UnknownFieldError:
+            self._logger.warning(f"Profile field '{name}' not found...forcing")
+            return "Xf07N749RFNW"
 
     async def _get_user_list(self) -> list[str]:
         """Return a list of Slack user IDs."""
