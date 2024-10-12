@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import random
 from typing import Any
 
@@ -217,6 +218,7 @@ class SlackGitHubMapper:
         response = await self._slack_client.team_profile_get()
         profile: dict[str, Any] = response.get("profile", {})
         fields: list[dict[str, Any]] = profile.get("fields", [])
+        self._logger.debug(f"Profile: {json.dumps(profile)}")
         for custom_field in fields:
             if custom_field.get("label") == name and "id" in custom_field:
                 field_id = custom_field["id"]
